@@ -38,7 +38,8 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     caches.open(CACHE).then(async (cache) => {
       const key = request.mode === 'navigate' ? new Request('./') : request;
-      const hit = await cache.match(key, { ignoreSearch: request.mode === 'navigate' });
+      // ignoreVary: module scripts are fetched with an Origin header the precache request never had.
+      const hit = await cache.match(key, { ignoreSearch: request.mode === 'navigate', ignoreVary: true });
       if (hit) return hit;
       try {
         return await fetch(request);

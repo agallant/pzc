@@ -87,6 +87,7 @@ function startCommute(number: number): void {
   level = generateLevel(number, randomSeed());
   game = createGame(level);
   hud.reset();
+  hud.configure(game.persona);
   hudRoot.hidden = false;
   controls.enabled = false;
   snapCamera = true;
@@ -102,7 +103,7 @@ function beginPlaying(): void {
   mode = 'playing';
   controls.enabled = true;
   acc = 0;
-  hud.say(`Car ${level.car}: find the green door`, 2.4);
+  hud.say(`Platform ${level.platform}, Car ${level.car}: find the green door`, 2.6);
 }
 
 function resumePlaying(): void {
@@ -167,6 +168,16 @@ function onEvent(e: GameEvent): void {
       break;
     case 'exhausted':
       hud.say('Out of breath!', 1.4);
+      break;
+    case 'liftStart':
+      hud.say('Lift: doors closing...', 2.2);
+      break;
+    case 'liftEnd':
+      sfx.play('lift');
+      break;
+    case 'wrongWay':
+      sfx.play('wrong');
+      hud.say('Dead end! Wrong platform. Turn back', 2.8);
       break;
     case 'won':
       sfx.play('win');

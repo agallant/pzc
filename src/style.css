@@ -264,6 +264,13 @@ h2 {
   font-size: 15px;
   line-height: 1.35;
 }
+.persona {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: #2a3c58;
+  font-size: 15px;
+}
 .muted {
   margin: 0;
   color: var(--muted);

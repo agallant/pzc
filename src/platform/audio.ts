@@ -1,4 +1,4 @@
-type SfxName = 'hit' | 'coin' | 'coffee' | 'nearMiss' | 'ping' | 'honk' | 'win' | 'dead' | 'trainLeft' | 'tap';
+type SfxName = 'hit' | 'coin' | 'coffee' | 'nearMiss' | 'ping' | 'honk' | 'win' | 'dead' | 'trainLeft' | 'tap' | 'lift' | 'wrong';
 
 interface Tone {
   type: OscillatorType;
@@ -40,6 +40,14 @@ const SFX: Record<SfxName, Tone[]> = {
     { type: 'sine', from: 988, dur: 0.18, gain: 0.3 },
     { type: 'sine', from: 740, at: 0.2, dur: 0.18, gain: 0.3 },
     { type: 'sine', from: 494, at: 0.4, dur: 0.3, gain: 0.3 },
+  ],
+  lift: [
+    { type: 'sine', from: 1319, dur: 0.5, gain: 0.25 },
+    { type: 'sine', from: 988, at: 0.0, dur: 0.5, gain: 0.12 },
+  ],
+  wrong: [
+    { type: 'square', from: 180, dur: 0.18, gain: 0.2 },
+    { type: 'square', from: 140, at: 0.2, dur: 0.3, gain: 0.2 },
   ],
   tap: [{ type: 'square', from: 520, dur: 0.04, gain: 0.1 }],
 };

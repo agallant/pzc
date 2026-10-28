@@ -1,3 +1,4 @@
+import { PERSONAS } from '../game/personas';
 import type { Level } from '../game/types';
 import type { Result } from '../game/sim';
 import type { Save, Settings } from '../platform/storage';
@@ -28,7 +29,17 @@ const TIPS = [
   'Streams of commuters cross the station hall. Time your gap.',
   'Brush past a zombie without touching to score an "Excuse me!" combo.',
   'Grab the coffee for a speed boost and a full tank.',
+  'Stairs are slow and tiring. Escalators are fast, until someone stands on the left. The lift is slow but sure, if it works.',
+  'Signs point the way to your platform. Some are in the local language only, and some are missing. A coloured line on the floor may help.',
 ];
+
+function tipFor(level: Level): string {
+  if (level.persona !== 'commuter') return PERSONAS[level.persona].blurb;
+  if (level.number === 2) return TIPS[6] as string;
+  if (level.number === 3) return TIPS[7] as string;
+  if (level.signMode === 'missing') return 'Signs can go missing. Look for a coloured guidance line on the floor, or pick by elimination.';
+  return TIPS[(level.number - 1) % TIPS.length] as string;
+}
 
 /** Full-screen overlays (menu, briefing, pause, results). Plain DOM, so it is accessible by default. */
 export class Screens {
@@ -119,12 +130,15 @@ export class Screens {
   }
 
   briefing(level: Level): void {
-    const tip = TIPS[(level.number - 1) % TIPS.length] as string;
+    const tip = tipFor(level);
+    const persona = PERSONAS[level.persona];
+    const who = level.persona === 'commuter' ? '' : `<p class="persona"><b>Today you are:</b> ${esc(persona.name)}</p>`;
     this.show(
       `<div class="card">
         <p class="eyebrow">Commute #${level.number}</p>
         <h2>${esc(level.from)} <span class="arrow" aria-label="to">&rarr;</span> ${esc(level.to)}</h2>
-        <p class="lede">Your train is in <b>Car ${level.car}</b>. The doors close in <b>${level.timeLimit} seconds</b>.</p>
+        <p class="lede">Your train leaves from <b>Platform ${level.platform}</b>, <b>Car ${level.car}</b>. The doors close in <b>${level.timeLimit} seconds</b>.</p>
+        ${who}
         <p class="tip">${esc(tip)}</p>
         <button class="btn primary" data-action="go" data-autofocus>Go!</button>
       </div>`,

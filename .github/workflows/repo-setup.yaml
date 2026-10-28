@@ -1,0 +1,177 @@
+# Template-only: creates a repository from this template (if it doesn't exist yet) and applies
+# .github/setup/setup-repo.sh to it: merge settings, the "main" ruleset, security features and
+# GitHub Pages. This is what lets Claude (or you, from a phone) set up a new app repo without a
+# local clone or toolchain: cloud Claude sessions can't change repo settings themselves.
+#
+# Trigger: open an issue in the TEMPLATE repo titled
+#     Set up <owner>/<name>
+# The first line of the issue body, if any, becomes the new repo's description; a line
+# "visibility: private" makes it private. Re-running on an existing repo re-applies the settings.
+# Or run it from the Actions tab (Run workflow).
+#
+# Needs the SETUP_TOKEN secret in the "repo-setup" environment (see .github/setup/README.md).
+# Only admins of the template repo can trigger it. It skips itself in repos created from the
+# template, since those aren't templates.
+name: Repo setup
+
+on:
+  issues:
+    types: [opened]
+  workflow_dispatch:
+    inputs:
+      repo:
+        description: Repository to create (if missing) and set up, as owner/name
+        required: true
+        type: string
+      description:
+        description: Description for a new repository
+        required: false
+        type: string
+      private:
+        description: Create the repository as private
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: repo-setup
+  cancel-in-progress: false
+
+jobs:
+  setup:
+    name: Repo setup
+    if: >-
+      github.event.repository.is_template &&
+      (github.event_name == 'workflow_dispatch' || startsWith(github.event.issue.title, 'Set up '))
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # The token lives in an environment restricted to main, so a workflow edited on a PR branch
+    # can't read it.
+    environment: repo-setup
+    permissions:
+      contents: read # check out the setup script
+      issues: write # comment the result on the request issue and close it
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Read the request
+        id: req
+        env:
+          EVENT: ${{ github.event_name }}
+          TITLE: ${{ github.event.issue.title }}
+          BODY: ${{ github.event.issue.body }}
+          ISSUE_AUTHOR: ${{ github.event.issue.user.login }}
+          INPUT_REPO: ${{ inputs.repo }}
+          INPUT_DESCRIPTION: ${{ inputs.description }}
+          INPUT_PRIVATE: ${{ inputs.private }}
+          ACTOR: ${{ github.actor }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "$EVENT" = workflow_dispatch ]; then
+            target="$INPUT_REPO" description="$INPUT_DESCRIPTION" private="$INPUT_PRIVATE" who="$ACTOR"
+          else
+            target="${TITLE#Set up }"
+            description="$(printf '%s\n' "$BODY" | tr -d '\r' | grep -viE '^[[:space:]]*visibility:' \
+              | grep -m1 -vE '^[[:space:]]*$' || true)"
+            private=false
+            if printf '%s\n' "$BODY" | grep -qiE '^[[:space:]]*visibility:[[:space:]]*private[[:space:]]*$'; then
+              private=true
+            fi
+            who="$ISSUE_AUTHOR"
+          fi
+          target="$(printf '%s' "$target" | tr -d '[:space:]')"
+          if ! [[ "$target" =~ ^[A-Za-z0-9-]+/[A-Za-z0-9._-]+$ ]]; then
+            echo "::error::Expected owner/name, got '$target'. Title the issue: Set up <owner>/<name>"
+            exit 1
+          fi
+          permission="$(gh api "repos/$GITHUB_REPOSITORY/collaborators/$who/permission" --jq .permission)"
+          if [ "$permission" != admin ]; then
+            echo "::error::$who isn't an admin of $GITHUB_REPOSITORY, so can't use this workflow."
+            exit 1
+          fi
+          {
+            echo "target=$target"
+            echo "private=$private"
+            echo "description=${description:0:300}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create the repository from this template
+        id: create
+        env:
+          GH_TOKEN: ${{ secrets.SETUP_TOKEN }}
+          TARGET: ${{ steps.req.outputs.target }}
+          PRIVATE: ${{ steps.req.outputs.private }}
+          DESCRIPTION: ${{ steps.req.outputs.description }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error::No SETUP_TOKEN secret in the repo-setup environment. See 'Setting up repos' in .github/setup/README.md."
+            exit 1
+          fi
+          if gh api "repos/$TARGET" --silent 2>/dev/null; then
+            echo "$TARGET exists; applying settings only."
+            exit 0
+          fi
+          gh api -X POST "repos/$GITHUB_REPOSITORY/generate" --silent \
+            -f owner="${TARGET%%/*}" -f name="${TARGET#*/}" -f description="$DESCRIPTION" \
+            -F private="$PRIVATE" -F include_all_branches=false
+          echo "created=true" >> "$GITHUB_OUTPUT"
+          # Generation finishes asynchronously; wait for the first commit on main.
+          for _ in $(seq 1 30); do
+            if gh api "repos/$TARGET/branches/main" --silent 2>/dev/null; then
+              echo "Created https://github.com/$TARGET"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "::error::$TARGET was created but its main branch didn't appear within a minute; re-run to finish setup."
+          exit 1
+
+      - name: Apply settings
+        env:
+          GH_TOKEN: ${{ secrets.SETUP_TOKEN }}
+          TARGET: ${{ steps.req.outputs.target }}
+        run: |
+          set -o pipefail
+          .github/setup/setup-repo.sh "$TARGET" 2>&1 | tee "$RUNNER_TEMP/setup.log"
+
+      - name: Report
+        if: always() && steps.req.outputs.target != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          ISSUE: ${{ github.event.issue.number }}
+          TARGET: ${{ steps.req.outputs.target }}
+          CREATED: ${{ steps.create.outputs.created }}
+          JOB_STATUS: ${{ job.status }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          report="$RUNNER_TEMP/report.md"
+          {
+            if [ "$JOB_STATUS" = success ]; then
+              if [ "$CREATED" = true ]; then
+                echo "Created and set up **[$TARGET](https://github.com/$TARGET)**."
+              else
+                echo "Set up **[$TARGET](https://github.com/$TARGET)**."
+              fi
+            else
+              echo "Setup of **$TARGET** failed. Details: $RUN_URL"
+            fi
+            if [ -s "$RUNNER_TEMP/setup.log" ]; then
+              echo
+              echo '```'
+              cat "$RUNNER_TEMP/setup.log"
+              echo '```'
+            fi
+          } > "$report"
+          cat "$report" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$EVENT" = issues ]; then
+            gh issue comment "$ISSUE" --repo "$GITHUB_REPOSITORY" --body-file "$report"
+            if [ "$JOB_STATUS" = success ]; then
+              gh issue close "$ISSUE" --repo "$GITHUB_REPOSITORY" --reason completed
+            fi
+          fi

@@ -1,0 +1,82 @@
+# Builds main and publishes it to the root of the gh-pages branch, which GitHub Pages serves.
+# PR previews live under pr-preview/ on the same branch (see preview.yaml), so this deploy must
+# leave that folder alone.
+#
+# The hourly schedule is a safety net: a merge made with the workflow token (e.g. if auto-merge
+# merges a PR the instant it is enabled) does not fire `push` workflows. The scheduled run
+# exits early when main is already deployed.
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: '41 * * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages-gh-pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    env:
+      BUILD_DIR: ${{ vars.BUILD_DIR || 'dist' }}
+      SITE_BASE_PATH: ${{ vars.SITE_BASE_PATH }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Check whether main is already deployed
+        id: current
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          head="$(git rev-parse HEAD)"
+          echo "head=$head" >> "$GITHUB_OUTPUT"
+          if [ "$EVENT" = schedule ] && gh api "repos/$GITHUB_REPOSITORY/commits?sha=gh-pages&per_page=50" \
+               --jq '.[].commit.message' 2>/dev/null | grep -qF "Deploy main @ $head"; then
+            echo "main ($head) is already deployed."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - id: setup
+        if: steps.current.outputs.skip != 'true'
+        uses: $/.github/actions/setup
+        with:
+          cache: 'false'
+
+      - name: Build
+        if: steps.current.outputs.skip != 'true' && steps.setup.outputs.has-project == 'true'
+        env:
+          BUILD_SHA: ${{ steps.current.outputs.head }}
+          BUILD_LABEL: main
+        run: |
+          BASE_PATH="$(.github/scripts/base-path.sh)"
+          export BASE_PATH
+          .github/scripts/run-script.sh build --required
+          .github/scripts/check-build.sh "$BUILD_DIR"
+          # .nojekyll at the site root turns Jekyll off for the whole branch, previews included.
+          touch "$BUILD_DIR/.nojekyll"
+
+      - name: Publish to gh-pages
+        if: steps.current.outputs.skip != 'true' && steps.setup.outputs.has-project == 'true'
+        uses: JamesIves/github-pages-deploy-action@fa24774553152dd7873cd16ebd8d959b010c5445 # v4.9.0
+        with:
+          folder: ${{ env.BUILD_DIR }}
+          branch: gh-pages
+          clean-exclude: pr-preview/
+          # Rebase instead of force-pushing, or a deploy would wipe in-flight PR previews.
+          force: false
+          commit-message: Deploy main @ ${{ steps.current.outputs.head }}

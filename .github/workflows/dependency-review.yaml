@@ -1,0 +1,27 @@
+# Required check: "Dependency review". Fails a PR that adds or upgrades to a dependency with a
+# known high/critical vulnerability. It reads the lockfile diff, so it works for any package
+# manager GitHub's dependency graph understands. Free on public repositories; skipped when the
+# repository variable CODE_SCANNING=off (private repo without GitHub Code Security).
+name: Dependency review
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  dependency-review:
+    name: Dependency review
+    if: vars.CODE_SCANNING != 'off'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: high
+          comment-summary-in-pr: on-failure
+          show-patched-versions: true

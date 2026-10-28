@@ -1,0 +1,74 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+#
+# CodeRabbit is the review gate: it requests changes when it has actionable findings and approves
+# once they are addressed. The "main" ruleset requires one approval, which only CodeRabbit can give
+# on PRs Claude opens, so its approval is what lets auto-merge proceed.
+# Reference: https://docs.coderabbit.ai/reference/configuration
+language: en-US
+
+reviews:
+  profile: chill
+  collapse_walkthrough: true
+  poem: false
+  # Report a failing status when a PR could NOT be reviewed (rate limit, too many files...),
+  # instead of a misleading green one.
+  fail_commit_status: true
+
+  auto_approvals:
+    # Request changes on blocking findings; approve once they're resolved and checks pass.
+    enabled: true
+    # PR authors (Claude acts as you) can't wave the review through with "@coderabbitai approve".
+    allow_author_approval: false
+
+  auto_review:
+    enabled: true
+    drafts: false
+    base_branches:
+      - '.*' # Review PRs into any branch, not just the default one.
+
+  pre_merge_checks:
+    # Docstring coverage is noise for a small app.
+    docstrings:
+      mode: 'off'
+
+  # Keep lockfiles and generated or binary assets out of the review (and its file-count cap).
+  path_filters:
+    - '!**/package-lock.json'
+    - '!**/pnpm-lock.yaml'
+    - '!**/yarn.lock'
+    - '!**/bun.lock'
+    - '!**/bun.lockb'
+    - '!**/dist/**'
+    - '!**/*.min.js'
+    - '!**/*.map'
+    - '!**/*.png'
+    - '!**/*.jpg'
+    - '!**/*.jpeg'
+    - '!**/*.gif'
+    - '!**/*.webp'
+    - '!**/*.avif'
+    - '!**/*.ico'
+    - '!**/*.woff'
+    - '!**/*.woff2'
+    - '!**/*.mp3'
+    - '!**/*.ogg'
+    - '!**/*.wav'
+
+  path_instructions:
+    - path: '**/*.ts'
+      instructions: &app-instructions >-
+        This is a client-only TypeScript PWA for phones and tablets, hosted on GitHub Pages with
+        no backend. Flag: anything that assumes a server (API routes, server-only env vars,
+        secrets in client code); APIs unsupported in current iOS Safari without a fallback;
+        touch handling that depends on hover or a mouse; layout that breaks on narrow or
+        rotated screens; work that can block the main thread during interaction or animation.
+    - path: '**/*.tsx'
+      instructions: *app-instructions
+    - path: '.github/**'
+      instructions: >-
+        Workflows hold a token that can push to gh-pages and merge PRs. Flag broadened
+        permissions, untrusted input interpolated into run scripts, and actions not pinned to a
+        commit SHA.
+
+chat:
+  auto_reply: true

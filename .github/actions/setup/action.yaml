@@ -1,0 +1,74 @@
+name: Set up project
+description: >
+  Detects the package manager from the lockfile, installs the toolchain and dependencies, and
+  reports whether there is a project to build at all. Keeps every workflow free of per-tool
+  assumptions so the template works with npm, pnpm, Yarn or Bun and any bundler.
+
+inputs:
+  cache:
+    description: >
+      Cache npm downloads. Turn off in workflows that publish (deploy, preview) so a poisoned
+      cache from a PR run can never reach the live site.
+    default: 'true'
+
+outputs:
+  has-project:
+    description: "'true' when a package.json exists at the repo root."
+    value: ${{ steps.detect.outputs.has-project }}
+  pm:
+    description: Detected package manager (npm, pnpm, yarn or bun).
+    value: ${{ steps.detect.outputs.pm }}
+
+runs:
+  using: composite
+  steps:
+    - name: Detect package manager
+      id: detect
+      shell: bash
+      run: |
+        if [ ! -f package.json ]; then
+          echo "has-project=false" >> "$GITHUB_OUTPUT"
+          echo "::notice::No package.json yet; skipping install/build steps."
+          exit 0
+        fi
+        echo "has-project=true" >> "$GITHUB_OUTPUT"
+        # Same rule as .github/scripts/pm.sh (inlined: this action may run from its own copy).
+        if [ -f bun.lock ] || [ -f bun.lockb ]; then pm=bun
+        elif [ -f pnpm-lock.yaml ]; then pm=pnpm
+        elif [ -f yarn.lock ]; then pm=yarn
+        else pm=npm
+        fi
+        echo "pm=$pm" >> "$GITHUB_OUTPUT"
+        echo "Detected package manager: $pm"
+
+    - name: Set up Node.js
+      if: steps.detect.outputs.has-project == 'true'
+      uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      with:
+        node-version-file: .nvmrc
+        # Only npm is cached here: the others need their CLI on PATH before setup-node runs.
+        cache: ${{ (inputs.cache == 'true' && steps.detect.outputs.pm == 'npm') && 'npm' || '' }}
+        package-manager-cache: false
+
+    - name: Set up Bun
+      if: steps.detect.outputs.pm == 'bun'
+      uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+
+    - name: Install dependencies
+      if: steps.detect.outputs.has-project == 'true'
+      shell: bash
+      env:
+        PM: ${{ steps.detect.outputs.pm }}
+      run: |
+        case "$PM" in
+          npm)
+            if [ -f package-lock.json ]; then npm ci; else npm install; fi ;;
+          pnpm)
+            corepack enable
+            pnpm install --frozen-lockfile ;;
+          yarn)
+            corepack enable
+            if yarn --version | grep -q '^1\.'; then yarn install --frozen-lockfile; else yarn install --immutable; fi ;;
+          bun)
+            bun install --frozen-lockfile ;;
+        esac

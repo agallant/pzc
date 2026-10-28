@@ -1,0 +1,36 @@
+# Turns on GitHub auto-merge (squash) for every non-draft PR into main. Auto-merge itself waits
+# for everything the "main" ruleset requires (see .github/setup/ruleset-main.json): passing CI,
+# CodeQL and the other checks, CodeRabbit's approval, and all review threads resolved.
+#
+# To keep a PR from merging on its own: open it as a draft, add the "manual-merge" label before
+# opening, or run `gh pr merge --disable-auto <PR>`. Set the repository variable AUTOMERGE=off to
+# turn this off entirely.
+name: Auto-merge
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+jobs:
+  enable-automerge:
+    name: Enable auto-merge
+    if: >-
+      vars.AUTOMERGE != 'off' &&
+      github.base_ref == 'main' &&
+      !github.event.pull_request.draft &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      !contains(github.event.pull_request.labels.*.name, 'manual-merge')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Enable auto-merge
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: gh pr merge "$PR_URL" --auto --squash

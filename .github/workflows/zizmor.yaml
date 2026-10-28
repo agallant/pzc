@@ -1,0 +1,38 @@
+# zizmor audits these GitHub Actions workflows for security problems (script injection, overly
+# broad tokens, credential leaks, cache poisoning, unpinned actions...). The workflows here hold a
+# token that can push to gh-pages and merge PRs, so they deserve their own linter.
+#
+# On a public repo, findings go to code scanning and the ruleset's "code scanning results" rule
+# blocks the merge. With CODE_SCANNING=off (private repo, no GitHub Code Security), the job
+# itself fails on findings instead.
+name: zizmor
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: zizmor-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  zizmor:
+    name: zizmor
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: zizmorcore/zizmor-action@53290badfa369cb0bf7ad16342cb62c2fa47ac7b # v0.8.0
+        with:
+          advanced-security: ${{ vars.CODE_SCANNING != 'off' }}

@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+.yarn/*
+!.yarn/patches
+!.yarn/releases
+
+# Build output (BUILD_DIR defaults to dist/)
+dist/
+dev-dist/
+build/
+coverage/
+*.tsbuildinfo
+.vite/
+.cache/
+
+# Local tooling
+.lighthouseci/
+playwright-report/
+test-results/
+*.log
+.env
+.env.*
+!.env.example
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json

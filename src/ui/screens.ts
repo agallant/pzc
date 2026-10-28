@@ -117,7 +117,7 @@ export class Screens {
       `<div class="card">
         <h2>How to play</h2>
         <ul class="tips">${TIPS.map((t) => `<li>${esc(t)}</li>`).join('')}</ul>
-        <p class="muted">Run out of hearts and you can only continue by taking a real walk, phone in your pocket. That part is coming soon.</p>
+        <p class="muted">Run out of hearts and you can only continue by taking a real walk, phone in your pocket. The further into a run, the longer the walk.</p>
         <button class="btn primary" data-action="back" data-autofocus>Back</button>
       </div>`,
       { back: () => this.menu(save, updateReady) },

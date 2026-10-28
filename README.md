@@ -29,6 +29,12 @@ npm run preview    # serve the production build
 
 Node 24 (see `.nvmrc`). Set `BASE_PATH=/pzc/` when building to mimic the GitHub Pages path.
 
+**Walking to continue.** When you run out of hearts, pick "Walk with the screen on" (pocket the phone;
+steps are counted live from the motion sensors, and looking at the phone or touching it makes them
+"zombie steps") or "Lock my phone and walk" (check in when you are back; the time the screen was off is
+credited, with full credit if you allow a location check). Browsers cannot read a pedometer or run in
+the background, so this is as strict as a web app can be. Nothing leaves the device.
+
 Controls: drag anywhere to walk, hold **RUN** to hurry (it tires you out). On a keyboard, use
 WASD or the arrow keys, and Shift or Space to run.
 

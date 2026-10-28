@@ -8,13 +8,18 @@ import { Controls } from './platform/input';
 import { loadSave, resetSave, writeSave, type Save } from './platform/storage';
 import { Hud } from './ui/hud';
 import { Screens } from './ui/screens';
+import { WalkScreen } from './ui/walkScreen';
+import { stepsRequired } from './walk/credit';
+import { LiveWalk } from './walk/live';
+import { beginLock, checkIn, noteVisibility } from './walk/lock';
 
-type Mode = 'menu' | 'briefing' | 'playing' | 'paused' | 'over';
+type Mode = 'menu' | 'briefing' | 'playing' | 'paused' | 'over' | 'walk';
 
 const canvas = document.getElementById('game') as HTMLCanvasElement;
 const ctx = canvas.getContext('2d', { alpha: false }) as CanvasRenderingContext2D;
 const hudRoot = document.getElementById('hud') as HTMLElement;
 const screenRoot = document.getElementById('screen') as HTMLElement;
+const appRoot = document.getElementById('app') as HTMLElement;
 
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 let save: Save = loadSave();
@@ -50,11 +55,10 @@ function makeDemo(): Game {
 const screens = new Screens(
   screenRoot,
   {
-    play: () => startCommute(save.nextLevel),
+    play: () => startCommute(save.run.level),
     resume: () => (mode === 'briefing' ? beginPlaying() : resumePlaying()),
     quit: () => toMenu(),
-    retry: () => startCommute(level.number),
-    next: () => startCommute(save.nextLevel),
+    next: () => startCommute(save.run.level),
     setSetting: (key, value) => {
       save.settings[key] = value;
       if (key === 'sound') sfx.enabled = value;
@@ -67,24 +71,44 @@ const screens = new Screens(
       toMenu();
     },
     reload: () => location.reload(),
+    walkLive,
+    walkLock: (withLocation) => void walkLock(withLocation),
+    checkIn: () => void doCheckIn(),
+    keepWalking: () => void walkLock(wantedLocation),
+    cancelLock: () => {
+      if (!save.walk) return;
+      save.walk.lock = null;
+      writeSave(save);
+      screens.continueScreen(save.walk, save.run);
+    },
+    finishWalk,
+    giveUp,
   },
   `${__BUILD_LABEL__} · ${__BUILD_SHA__}`,
 );
 
 function toMenu(): void {
   mode = 'menu';
+  walkScreen.hide();
   controls.enabled = false;
   hudRoot.hidden = true;
   game = makeDemo();
   level = game.level;
   snapCamera = true;
   acc = 0;
+  const lock = save.walk?.lock;
+  if (save.walk && lock) {
+    noteVisibility(lock, document.hidden);
+    writeSave(save);
+    screens.lockWaiting(save.walk);
+    return;
+  }
   screens.menu(save, updateReady);
 }
 
-function startCommute(number: number): void {
+function startCommute(number: number, seed: number = randomSeed()): void {
   sfx.unlock();
-  level = generateLevel(number, randomSeed());
+  level = generateLevel(number, seed);
   game = createGame(level);
   hud.reset();
   hud.configure(game.persona);
@@ -131,11 +155,25 @@ window.addEventListener('keydown', (e) => {
 });
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) pauseGame();
+  const lock = save.walk?.lock;
+  if (save.walk && lock) {
+    noteVisibility(lock, document.hidden);
+    writeSave(save);
+    if (!document.hidden && mode !== 'walk') screens.lockWaiting(save.walk);
+  }
+});
+// iOS can drop a backgrounded page without warning: record that the screen went away.
+addEventListener('pagehide', () => {
+  const lock = save.walk?.lock;
+  if (lock) {
+    noteVisibility(lock, true);
+    writeSave(save);
+  }
 });
 // iOS Safari ignores touch-action for pinch; stop the page zooming under a thumb mid-game.
 document.addEventListener('gesturestart', (e) => e.preventDefault());
 
-function vibrate(ms: number): void {
+function vibrate(ms: number | number[]): void {
   if (save.settings.haptics && 'vibrate' in navigator) navigator.vibrate(ms);
 }
 
@@ -197,19 +235,114 @@ function finish(): void {
   controls.release();
   if (game.status === 'won') {
     const r = scoreResult(game);
-    const newBest = r.score > save.highScore;
-    save.highScore = Math.max(save.highScore, r.score);
+    save.run.level = level.number + 1;
+    save.run.score += r.score;
+    const newBest = save.run.score > save.highScore;
+    save.highScore = Math.max(save.highScore, save.run.score);
     save.bestLevel = Math.max(save.bestLevel, level.number);
-    save.nextLevel = Math.max(save.nextLevel, level.number + 1);
     save.stars[level.number] = Math.max(save.stars[level.number] ?? 0, r.stars);
     writeSave(save);
     screens.won(level, r, newBest);
   } else {
     const score = Math.round(game.score);
-    save.highScore = Math.max(save.highScore, score);
+    save.walk = { required: stepsRequired(save.run.continues), pure: 0, zombie: 0, level: level.number, seed: level.seed, lock: null };
     writeSave(save);
-    screens.lost(level, score, Math.round(100 * (1 - game.player.y / level.height)));
+    screens.lost(level, score, Math.round(100 * (1 - game.player.y / level.height)), save.walk, save.run);
   }
+}
+
+let live: LiveWalk | null = null;
+let wantedLocation = false;
+const walkScreen = new WalkScreen(appRoot);
+walkScreen.onMilestone = () => {
+  vibrate(40);
+  sfx.play('tap');
+};
+
+function walkLive(): void {
+  const walk = save.walk;
+  if (!walk) return;
+  sfx.unlock();
+  let wasDone = false;
+  const session = new LiveWalk(
+    walk,
+    (view) => {
+      walkScreen.update(view);
+      if (view.phase === 'done' && !wasDone) {
+        wasDone = true;
+        sfx.play('win');
+        vibrate([120, 60, 120]);
+      }
+    },
+    () => writeSave(save),
+  );
+  live = session;
+  mode = 'walk';
+  screens.hide();
+  walkScreen.show(stopLive, finishWalk);
+  walkScreen.update({ phase: 'starting', pure: walk.pure, zombie: walk.zombie, required: walk.required, awake: true });
+  void session.start().then((permission) => {
+    if (permission === 'granted') return;
+    stopLive(
+      permission === 'denied'
+        ? 'Motion access was denied. Allow it in your browser settings, or lock your phone and walk instead.'
+        : 'This device does not share motion sensors with the browser. Lock your phone and walk instead.',
+    );
+  });
+}
+
+function stopLive(message = ''): void {
+  live?.stop();
+  live = null;
+  walkScreen.hide();
+  mode = 'menu';
+  writeSave(save);
+  if (save.walk) screens.continueScreen(save.walk, save.run, message);
+  else toMenu();
+}
+
+async function walkLock(withLocation: boolean): Promise<void> {
+  const walk = save.walk;
+  if (!walk) return;
+  sfx.unlock();
+  wantedLocation = withLocation;
+  await beginLock(walk, withLocation);
+  writeSave(save);
+  screens.lockWaiting(walk);
+}
+
+async function doCheckIn(): Promise<void> {
+  const walk = save.walk;
+  if (!walk) return;
+  const outcome = await checkIn(walk);
+  writeSave(save);
+  if (outcome.credit.steps > 0) sfx.play(walk.pure >= walk.required ? 'win' : 'coffee');
+  screens.checkInResult(walk, outcome, save.run);
+}
+
+function finishWalk(): void {
+  const walk = save.walk;
+  live?.stop();
+  live = null;
+  walkScreen.hide();
+  if (!walk) {
+    toMenu();
+    return;
+  }
+  save.run.continues += 1;
+  save.walk = null;
+  writeSave(save);
+  startCommute(walk.level, walk.seed);
+}
+
+function giveUp(): void {
+  live?.stop();
+  live = null;
+  save.highScore = Math.max(save.highScore, save.run.score);
+  save.run = { level: 1, score: 0, continues: 0 };
+  save.walk = null;
+  writeSave(save);
+  toMenu();
 }
 
 function resize(): void {
@@ -227,6 +360,11 @@ resize();
 let acc = 0;
 let last = performance.now();
 function frame(now: number): void {
+  if (mode === 'walk') {
+    last = now;
+    requestAnimationFrame(frame);
+    return;
+  }
   const dt = Math.min(0.1, (now - last) / 1000);
   last = now;
   if (mode === 'playing') {

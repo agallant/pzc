@@ -263,6 +263,8 @@ function walkLive(): void {
   const walk = save.walk;
   if (!walk) return;
   sfx.unlock();
+  // Live counting takes over from any lock-and-walk segment, including one still waiting on its first fix.
+  walk.lock = null;
   let wasDone = false;
   const session = new LiveWalk(
     walk,
@@ -306,10 +308,10 @@ async function walkLock(withLocation: boolean): Promise<void> {
   if (!walk) return;
   sfx.unlock();
   wantedLocation = withLocation;
-  await beginLock(walk, withLocation);
+  const current = await beginLock(walk, withLocation);
   writeSave(save);
-  // The player may have cancelled or given up while the location request was pending.
-  if (save.walk !== walk || !walk.lock || mode !== 'menu') return;
+  // The player may have cancelled, given up or started walking while the location request was pending.
+  if (!current || save.walk !== walk || !walk.lock || mode !== 'menu') return;
   screens.lockWaiting(walk);
 }
 
@@ -325,6 +327,7 @@ async function doCheckIn(): Promise<void> {
   } finally {
     checkingIn = false;
   }
+  if (outcome.stale) return;
   writeSave(save);
   if (outcome.credit.steps > 0) sfx.play(walk.pure >= walk.required ? 'win' : 'coffee');
   screens.checkInResult(walk, outcome, save.run);

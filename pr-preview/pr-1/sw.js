@@ -1,8 +1,11 @@
 // Service worker template. vite.config.ts fills in the version and precache list at build time.
 // Precaches the whole app shell so the game opens with no network after the first visit.
-const VERSION = 'b53dcd8fc615';
-const PRECACHE = ["./","assets/index-BQdIyjq7.js","assets/index-CA0cc5Mx.css","icons/apple-touch-icon.png","icons/icon-192.png","icons/icon-512.png","icons/icon-maskable-512.png","manifest.webmanifest"];
-const CACHE = `pzc-${VERSION}`;
+const VERSION = '129efda12d78';
+const PRECACHE = ["./","assets/index-CA0cc5Mx.css","assets/index-Dy2WWPtQ.js","icons/apple-touch-icon.png","icons/icon-192.png","icons/icon-512.png","icons/icon-maskable-512.png","manifest.webmanifest"];
+// Cache Storage is shared by every registration on this origin (the live site and each PR preview),
+// so each scope gets its own prefix and only ever cleans up after itself.
+const PREFIX = `pzc:${new URL(self.registration.scope).pathname}:`;
+const CACHE = `${PREFIX}${VERSION}`;
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -17,7 +20,7 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches
       .keys()
-      .then((keys) => Promise.all(keys.filter((k) => k.startsWith('pzc-') && k !== CACHE).map((k) => caches.delete(k))))
+      .then((keys) => Promise.all(keys.filter((k) => k.startsWith(PREFIX) && k !== CACHE).map((k) => caches.delete(k))))
       .then(() => self.clients.claim()),
   );
 });

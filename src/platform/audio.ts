@@ -72,10 +72,16 @@ export class Sfx {
     }
   }
 
-  play(name: SfxName): void {
+  /** `pan` is -1 (left) to 1 (right), so a ping or a horn can be placed in the world. */
+  play(name: SfxName, pan = 0): void {
     const ctx = this.ctx;
     if (!this.enabled || !ctx || ctx.state !== 'running') return;
     const now = ctx.currentTime;
+    const panner = pan !== 0 && typeof ctx.createStereoPanner === 'function' ? ctx.createStereoPanner() : null;
+    if (panner) {
+      panner.pan.value = Math.max(-1, Math.min(1, pan));
+      panner.connect(ctx.destination);
+    }
     for (const t of SFX[name]) {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
@@ -87,7 +93,7 @@ export class Sfx {
       gain.gain.setValueAtTime(0.0001, start);
       gain.gain.exponentialRampToValueAtTime(peak, start + 0.012);
       gain.gain.exponentialRampToValueAtTime(0.0001, start + t.dur);
-      osc.connect(gain).connect(ctx.destination);
+      osc.connect(gain).connect(panner ?? ctx.destination);
       osc.start(start);
       osc.stop(start + t.dur + 0.02);
     }

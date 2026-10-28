@@ -54,11 +54,12 @@ two modes and let the player pick:
 - Not done yet: a calibration screen to learn the player's own cadence and stride (defaults: 100 steps
   per minute, 0.74 m stride).
 
-### M4: Addictive loop and progression
-- Daily commute (shared seed), city themes (Tokyo, Seoul, Shanghai, Paris/Berlin looks and signage),
-  unlockable commuters and outfits, streaks, a rewards track that favors healthy walking.
-- Run summary and share card, local leaderboard, export/import of the save file (Safari may evict storage).
-- Juice: zombie groans and notification-sound mix, screen reactions, music that reacts to danger.
+### M4: Addictive loop and progression (first part done)
+- Done: daily commute (same seed for everyone on a date, with a streak), lifetime stats, caps unlocked by
+  walking, backup/restore of the save (copy, file, share), share text, red danger vignette at one heart,
+  positional notification and horn sounds.
+- Still to do: more city looks and signage per region, a share image, a local leaderboard, music that
+  reacts to danger, zombie groans.
 
 ### M5: Polish and balance
 - Bot-driven difficulty curve tests, accessibility pass (colour-blind safe signals, one-handed layout,

@@ -33,8 +33,30 @@ export interface Run {
   continues: number;
 }
 
+export interface Stats {
+  /** Lifetime pure steps walked to earn continues. */
+  steps: number;
+  zombieSteps: number;
+  commutes: number;
+  bumps: number;
+  nearMisses: number;
+}
+
+export interface Daily {
+  /** Local date (YYYY-MM-DD) of the last completed daily commute. */
+  last: string | null;
+  streak: number;
+  bestStreak: number;
+  /** Best score on the daily for `scoreDay`. */
+  scoreDay: string | null;
+  score: number;
+}
+
 export interface Save {
-  v: 2;
+  v: 3;
+  stats: Stats;
+  daily: Daily;
+  outfit: string;
   run: Run;
   bestLevel: number;
   highScore: number;
@@ -47,7 +69,10 @@ const KEY = 'pzc:save:v1';
 
 function fresh(): Save {
   return {
-    v: 2,
+    v: 3,
+    stats: { steps: 0, zombieSteps: 0, commutes: 0, bumps: 0, nearMisses: 0 },
+    daily: { last: null, streak: 0, bestStreak: 0, scoreDay: null, score: 0 },
+    outfit: 'orange',
     run: { level: 1, score: 0, continues: 0 },
     bestLevel: 0,
     highScore: 0,
@@ -101,8 +126,26 @@ function sane(raw: unknown): Save {
     for (const [k, v] of Object.entries(r.stars)) if (typeof v === 'number' && v >= 1 && v <= 3) stars[Number(k)] = v;
   }
   const run: Partial<Run> = typeof r.run === 'object' && r.run !== null ? r.run : {};
+  const stats: Partial<Stats> = typeof r.stats === 'object' && r.stats !== null ? r.stats : {};
+  const daily: Partial<Daily> = typeof r.daily === 'object' && r.daily !== null ? r.daily : {};
+  const day = (v: unknown): string | null => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null);
   return {
-    v: 2,
+    v: 3,
+    stats: {
+      steps: num(stats.steps, 0),
+      zombieSteps: num(stats.zombieSteps, 0),
+      commutes: num(stats.commutes, 0),
+      bumps: num(stats.bumps, 0),
+      nearMisses: num(stats.nearMisses, 0),
+    },
+    daily: {
+      last: day(daily.last),
+      streak: num(daily.streak, 0),
+      bestStreak: Math.max(num(daily.bestStreak, 0), num(daily.streak, 0)),
+      scoreDay: day(daily.scoreDay),
+      score: num(daily.score, 0),
+    },
+    outfit: typeof r.outfit === 'string' && r.outfit.length < 24 ? r.outfit : 'orange',
     // Saves from the first release stored the next commute as `nextLevel`.
     run: {
       level: Math.max(1, num(run.level, num(r.nextLevel, 1))),
@@ -147,4 +190,20 @@ export function resetSave(): Save {
 /** For tests: parse arbitrary stored data the way loadSave does. */
 export function parseSave(raw: unknown): Save {
   return sane(raw);
+}
+
+/** The whole save as text, for backups: Safari can evict storage for sites that are not on the home screen. */
+export function exportSave(save: Save): string {
+  return JSON.stringify({ app: 'pzc', ...save }, null, 2);
+}
+
+/** Parses a backup. Returns null if the text is not one of ours. */
+export function importSave(text: string): Save | null {
+  try {
+    const raw: unknown = JSON.parse(text);
+    if (typeof raw !== 'object' || raw === null || (raw as { app?: unknown }).app !== 'pzc') return null;
+    return sane(raw);
+  } catch {
+    return null;
+  }
 }

@@ -210,7 +210,7 @@ export class Screens {
     this.show(
       `<div class="card">
         <h2>Give up this run?</h2>
-        <p class="lede">Your run score of <b>${run.score}</b> is banked, and you start again from Commute 1.</p>
+        <p class="lede">Your run score of <b>${run.score + walk.score}</b> is banked, and you start again from Commute 1.</p>
         <button class="btn danger" data-action="yes" data-autofocus>Yes, start a new run</button>
         <button class="btn" data-action="no">Back</button>
       </div>`,

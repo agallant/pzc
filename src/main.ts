@@ -282,7 +282,7 @@ function walkLive(): void {
   walkScreen.show(stopLive, finishWalk);
   walkScreen.update({ phase: 'starting', pure: walk.pure, zombie: walk.zombie, required: walk.required, awake: true });
   void session.start().then((permission) => {
-    if (permission === 'granted') return;
+    if (live !== session || permission === 'granted') return;
     stopLive(
       permission === 'denied'
         ? 'Motion access was denied. Allow it in your browser settings, or lock your phone and walk instead.'
@@ -308,13 +308,23 @@ async function walkLock(withLocation: boolean): Promise<void> {
   wantedLocation = withLocation;
   await beginLock(walk, withLocation);
   writeSave(save);
+  // The player may have cancelled or given up while the location request was pending.
+  if (save.walk !== walk || !walk.lock || mode !== 'menu') return;
   screens.lockWaiting(walk);
 }
 
+let checkingIn = false;
+
 async function doCheckIn(): Promise<void> {
   const walk = save.walk;
-  if (!walk) return;
-  const outcome = await checkIn(walk);
+  if (!walk || checkingIn) return;
+  checkingIn = true;
+  let outcome: Awaited<ReturnType<typeof checkIn>>;
+  try {
+    outcome = await checkIn(walk);
+  } finally {
+    checkingIn = false;
+  }
   writeSave(save);
   if (outcome.credit.steps > 0) sfx.play(walk.pure >= walk.required ? 'win' : 'coffee');
   screens.checkInResult(walk, outcome, save.run);

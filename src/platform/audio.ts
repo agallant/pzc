@@ -66,7 +66,9 @@ export class Sfx {
         this.ctx = new Ctor();
       }
       // iOS Safari reports "interrupted" after the page was backgrounded; a resume() is needed then too.
-      if (this.ctx.state !== 'running') void this.ctx.resume();
+      const ctx = this.ctx;
+      // If the browser refuses, drop the context so the next user gesture builds a fresh one.
+      if (ctx.state !== 'running') ctx.resume().catch(() => (this.ctx = this.ctx === ctx ? null : this.ctx));
     } catch {
       this.ctx = null;
     }

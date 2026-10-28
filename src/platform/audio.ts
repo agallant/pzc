@@ -49,18 +49,18 @@ export class Sfx {
   enabled = true;
   private ctx: AudioContext | null = null;
 
-  /** Call from a user gesture: iOS Safari will not start audio otherwise. */
-  unlock(): void {
+  /** Call from a user gesture: iOS Safari will not start audio otherwise. Resolves once the context is running (or has been given up on). */
+  async unlock(): Promise<void> {
     try {
       if (!this.ctx) {
         const Ctor = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
         if (!Ctor) return;
         this.ctx = new Ctor();
       }
-      // iOS Safari reports "interrupted" after the page was backgrounded; a resume() is needed then too.
       const ctx = this.ctx;
+      // iOS Safari reports "interrupted" after the page was backgrounded; a resume() is needed then too.
       // If the browser refuses, drop the context so the next user gesture builds a fresh one.
-      if (ctx.state !== 'running') ctx.resume().catch(() => (this.ctx = this.ctx === ctx ? null : this.ctx));
+      if (ctx.state !== 'running') await ctx.resume().catch(() => (this.ctx = this.ctx === ctx ? null : this.ctx));
     } catch {
       this.ctx = null;
     }

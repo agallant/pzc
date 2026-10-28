@@ -59,8 +59,7 @@ const screens = new Screens(
       save.settings[key] = value;
       if (key === 'sound') sfx.enabled = value;
       writeSave(save);
-      sfx.unlock();
-      sfx.play('tap');
+      void sfx.unlock().then(() => sfx.play('tap'));
     },
     reset: () => {
       save = resetSave();

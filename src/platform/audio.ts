@@ -57,7 +57,8 @@ export class Sfx {
         if (!Ctor) return;
         this.ctx = new Ctor();
       }
-      if (this.ctx.state === 'suspended') void this.ctx.resume();
+      // iOS Safari reports "interrupted" after the page was backgrounded; a resume() is needed then too.
+      if (this.ctx.state !== 'running') void this.ctx.resume();
     } catch {
       this.ctx = null;
     }

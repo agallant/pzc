@@ -79,6 +79,7 @@ function toMenu(): void {
   game = makeDemo();
   level = game.level;
   snapCamera = true;
+  acc = 0;
   screens.menu(save, updateReady);
 }
 
@@ -219,7 +220,9 @@ function frame(now: number): void {
   const dt = Math.min(0.1, (now - last) / 1000);
   last = now;
   if (mode === 'playing') {
-    acc += dt;
+    // Once the run is decided there is nothing left to simulate: freeze the clock and the picture.
+    if (game.status === 'playing') acc += dt;
+    else acc = 0;
     while (acc >= STEP && game.status === 'playing') {
       step(game, controls.read());
       acc -= STEP;
@@ -243,7 +246,7 @@ function frame(now: number): void {
   fx.update(dt);
   updateCamera(cam, game, vp, dt, snapCamera);
   snapCamera = false;
-  const alpha = mode === 'playing' || mode === 'menu' ? acc / STEP : 1;
+  const alpha = (mode === 'playing' && game.status === 'playing') || mode === 'menu' ? acc / STEP : 1;
   drawGame(ctx, game, cam, vp, alpha, fx, controls.stick, now / 1000);
   requestAnimationFrame(frame);
 }

@@ -15,7 +15,7 @@ describe('parseSave', () => {
     expect(s.run.level).toBe(4);
     expect(s.highScore).toBe(900);
     expect(s.stars).toEqual({ 1: 3 });
-    expect(s.settings).toEqual({ sound: false, haptics: true });
+    expect(s.settings).toEqual({ sound: false, haptics: true, leftHanded: false, bigControls: false });
   });
 
   it('keeps a pending walk and clamps its progress', () => {

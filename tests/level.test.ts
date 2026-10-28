@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { generateLevel } from '../src/game/level';
+import { circleRectPush } from '../src/game/geometry';
+import { PERSONAS } from '../src/game/personas';
 import { findPath } from './helpers';
 
 describe('generateLevel', () => {
@@ -113,6 +115,23 @@ describe('transit features', () => {
     for (let k = 0; k < 8; k++) {
       const level = levelWith((l) => l.persona !== 'wheelchair' && l.seed > k * 30);
       expect(findPath(level), `${level.persona} seed ${level.seed}`).not.toBeNull();
+    }
+  });
+
+  it('seals the stairs and escalator at both ends for a wheelchair user', () => {
+    for (let k = 0; k < 5; k++) {
+      const level = levelWith((l) => l.persona === 'wheelchair' && l.seed > k * 60);
+      const r = PERSONAS.wheelchair.radius;
+      const steps = level.zones.filter((z) => z.floor === 'stairs' || z.floor === 'escalator');
+      expect(steps.length).toBe(2);
+      for (const z of steps) {
+        for (const edge of [z.y + 0.2, z.y + z.h - 0.2]) {
+          for (let x = z.x + 0.5; x < z.x + z.w; x += 0.5) {
+            const blocked = level.walls.some((w) => circleRectPush({ x, y: edge, r }, w));
+            expect(blocked, `seed ${level.seed} x=${x} y=${edge}`).toBe(true);
+          }
+        }
+      }
     }
   });
 });

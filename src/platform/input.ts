@@ -3,6 +3,7 @@ import type { Input } from '../game/sim';
 const STICK_RADIUS = 56;
 const DEAD_ZONE = 6;
 
+
 export interface StickView {
   active: boolean;
   ox: number;
@@ -18,6 +19,8 @@ export class Controls {
   private sprintHeld = false;
   private keys = new Set<string>();
   enabled = false;
+  /** Multiplier for the joystick's reach, for the larger-controls setting. */
+  stickScale = 1;
 
   constructor(private readonly canvas: HTMLCanvasElement) {
     canvas.addEventListener('pointerdown', this.onDown);
@@ -63,7 +66,8 @@ export class Controls {
         const sy = this.stick.y - this.stick.oy;
         const d = Math.hypot(sx, sy);
         if (d > DEAD_ZONE) {
-          const m = Math.min(1, (d - DEAD_ZONE) / (STICK_RADIUS - DEAD_ZONE));
+          const reach = STICK_RADIUS * this.stickScale;
+          const m = Math.min(1, (d - DEAD_ZONE) / (reach - DEAD_ZONE));
           dx = (sx / d) * m;
           dy = (sy / d) * m;
         }
@@ -99,8 +103,9 @@ export class Controls {
     s.y = e.clientY;
     // The base follows the thumb so a long drag never needs a re-grip.
     const d = Math.hypot(s.x - s.ox, s.y - s.oy);
-    if (d > STICK_RADIUS) {
-      const f = (d - STICK_RADIUS) / d;
+    const reach = STICK_RADIUS * this.stickScale;
+    if (d > reach) {
+      const f = (d - reach) / d;
       s.ox += (s.x - s.ox) * f;
       s.oy += (s.y - s.oy) * f;
     }

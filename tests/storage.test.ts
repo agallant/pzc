@@ -34,3 +34,11 @@ describe('parseSave', () => {
     expect(s.walk?.lock?.fix).toBeNull();
   });
 });
+
+describe('settings', () => {
+  it('defaults the control preferences and keeps them when set', () => {
+    expect(parseSave({}).settings).toEqual({ sound: true, haptics: true, leftHanded: false, bigControls: false });
+    const s = parseSave({ settings: { leftHanded: true, bigControls: true, sound: false } });
+    expect(s.settings).toEqual({ sound: false, haptics: true, leftHanded: true, bigControls: true });
+  });
+});

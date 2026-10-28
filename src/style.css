@@ -572,3 +572,17 @@ h2 {
   -webkit-user-select: text;
   user-select: text;
 }
+
+.hud.left-handed .sprint {
+  right: auto;
+  left: calc(var(--safe-left) + 18px);
+}
+.hud.left-handed .stamina {
+  left: auto;
+  right: calc(var(--safe-right) + 14px);
+}
+.hud.big-controls .sprint {
+  width: 104px;
+  height: 104px;
+  font-size: 24px;
+}

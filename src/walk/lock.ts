@@ -4,8 +4,10 @@ import { getFix } from './sensors';
 
 /** Starts a "lock the phone and walk" segment. With `withLocation`, takes a first location fix. */
 export async function beginLock(walk: WalkRecord, withLocation: boolean, now = Date.now()): Promise<void> {
-  const fix = withLocation ? await getFix() : null;
-  walk.lock = { at: now, hiddenAt: document.hidden ? now : null, hiddenMs: 0, fix };
+  // Record the lock first: while the location request is pending the page can be hidden or discarded.
+  const lock: LockRecord = { at: now, hiddenAt: document.hidden ? now : null, hiddenMs: 0, fix: null };
+  walk.lock = lock;
+  if (withLocation) lock.fix = await getFix();
 }
 
 /** Track how long the screen was away. Call on visibility changes and when the app loads. */

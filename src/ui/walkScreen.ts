@@ -44,6 +44,7 @@ export class WalkScreen {
   show(onStop: () => void, onDone: () => void): void {
     this.onStop = onStop;
     this.onDone = onDone;
+    this.note.textContent = '';
     this.root.hidden = false;
     this.lastBucket = -1;
   }

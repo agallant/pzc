@@ -41,6 +41,7 @@ export class LiveWalk {
   private noSensorTimer = 0;
   private note: string | undefined;
   private done = false;
+  private stopped = false;
   private pending: { t: number; n: number }[] = [];
 
   constructor(
@@ -52,7 +53,7 @@ export class LiveWalk {
   /** Must be called straight from a tap: iOS only shows its motion permission prompt then. */
   async start(): Promise<MotionPermission> {
     const permission = await requestMotion();
-    if (permission !== 'granted') return permission;
+    if (permission !== 'granted' || this.stopped) return permission;
     window.addEventListener('devicemotion', this.onMotion);
     document.addEventListener('pointerdown', this.onTouch, true);
     document.addEventListener('visibilitychange', this.onVisibility);
@@ -60,12 +61,19 @@ export class LiveWalk {
       if (!this.gotMotion) this.emit();
     }, NO_SENSOR_MS);
     this.release = await keepScreenOn();
+    if (this.stopped) {
+      // Stop arrived while the wake lock was being taken: give it straight back.
+      this.release?.();
+      this.release = null;
+      return 'granted';
+    }
     this.awake = this.release !== null;
     this.emit();
     return 'granted';
   }
 
   stop(): void {
+    this.stopped = true;
     window.removeEventListener('devicemotion', this.onMotion);
     document.removeEventListener('pointerdown', this.onTouch, true);
     document.removeEventListener('visibilitychange', this.onVisibility);

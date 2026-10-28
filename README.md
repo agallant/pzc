@@ -2,8 +2,8 @@
 
 A comic arcade game for phones and tablets. Cross a busy, high-functioning city to catch your train
 while everyone around you walks head-down, poking at a phone. Bump into a phone zombie and you lose
-a heart. Lose them all and the commute is over. The plan is that you can only continue by taking a real
-walk with your phone in your pocket; that is not in yet, see [ROADMAP.md](ROADMAP.md).
+a heart. Lose them all and the commute is over. You can only continue by taking a real walk with
+your phone in your pocket (see "Walking to continue" below and [ROADMAP.md](ROADMAP.md)).
 
 **Play it:** https://agallant.github.io/pzc/
 

@@ -245,7 +245,7 @@ function finish(): void {
     screens.won(level, r, newBest);
   } else {
     const score = Math.round(game.score);
-    save.walk = { required: stepsRequired(save.run.continues), pure: 0, zombie: 0, level: level.number, seed: level.seed, lock: null };
+    save.walk = { required: stepsRequired(save.run.continues), pure: 0, zombie: 0, level: level.number, seed: level.seed, score, lock: null };
     writeSave(save);
     screens.lost(level, score, Math.round(100 * (1 - game.player.y / level.height)), save.walk, save.run);
   }
@@ -338,6 +338,7 @@ function finishWalk(): void {
 function giveUp(): void {
   live?.stop();
   live = null;
+  save.run.score += save.walk?.score ?? 0;
   save.highScore = Math.max(save.highScore, save.run.score);
   save.run = { level: 1, score: 0, continues: 0 };
   save.walk = null;

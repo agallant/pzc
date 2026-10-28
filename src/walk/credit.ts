@@ -50,7 +50,8 @@ export function checkInCredit({ awayMs, from, to, cadence = 100, stride = 0.74 }
   const honour = Math.floor(full * HONOUR_RATE);
   if (!from || !to) return { steps: honour, verified: false };
   const meters = Math.max(0, haversine(from, to) - from.accuracy - to.accuracy);
-  const speed = meters / seconds;
+  // Speed uses the real elapsed time; only the credit is capped.
+  const speed = meters / (awayMs / 1000);
   if (speed > MAX_WALK_SPEED) return { steps: 0, verified: false, reason: 'vehicle', meters };
   const gps = meters / stride;
   if (gps >= honour) return { steps: Math.floor(Math.min(full, gps)), verified: true, meters };

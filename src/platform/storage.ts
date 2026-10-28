@@ -24,6 +24,8 @@ export interface WalkRecord {
   /** The commute (and its seed) to restart once the walk is done. */
   level: number;
   seed: number;
+  /** Points from the failed commute. Banked only if the player gives up: the same seed is replayed after a walk. */
+  score: number;
   lock: LockRecord | null;
 }
 
@@ -88,6 +90,7 @@ function walk(raw: unknown): WalkRecord | null {
     zombie: num(w.zombie, 0),
     level: Math.max(1, num(w.level, 1)),
     seed: num(w.seed, 1),
+    score: num(w.score, 0),
     lock,
   };
 }

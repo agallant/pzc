@@ -140,6 +140,15 @@ describe('check-in credit', () => {
     expect(c.steps).toBe(Math.floor(5 * 100 * 0.7));
   });
 
+  it('does not mistake a long real walk for a vehicle', () => {
+    // About 3.6 km in 43 minutes is a normal 1.4 m/s walk, even though credit is capped at 20 minutes.
+    const there = { lat: here.lat + 0.0325, lon: here.lon, accuracy: 10 };
+    const c = checkInCredit({ awayMs: 43 * 60_000, from: here, to: there });
+    expect(c.reason).toBeUndefined();
+    expect(c.verified).toBe(true);
+    expect(c.steps).toBe(20 * 100);
+  });
+
   it('measures distance', () => {
     expect(haversine(here, { ...here, lat: here.lat + 0.001 })).toBeGreaterThan(105);
     expect(haversine(here, { ...here, lat: here.lat + 0.001 })).toBeLessThan(118);

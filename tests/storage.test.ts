@@ -25,6 +25,8 @@ describe('parseSave', () => {
     });
     expect(s.walk?.pure).toBe(350);
     expect(s.walk?.lock?.fix).toEqual({ lat: 1, lon: 2, accuracy: 8 });
+    expect(s.walk?.score).toBe(0);
+    expect(parseSave({ walk: { required: 5, score: 420 } }).walk?.score).toBe(420);
     expect(s.run.continues).toBe(2);
   });
 

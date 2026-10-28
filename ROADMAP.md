@@ -25,7 +25,7 @@ Each milestone ships as one reviewable PR that is playable on its own.
 - Canvas renderer, floating joystick + run button, keyboard, synthesized sound, haptics, reduced-motion.
 - Menu, briefing, pause, results. Game over is a placeholder for M3.
 
-### M2: Mass transit is confusing
+### M2: Mass transit is confusing (done)
 - Stairs vs escalator vs elevator choices: stairs drain stamina, escalators are crowded and one-way,
   elevators are slow and shared. Burden and fatigue modifiers change the numbers.
 - Forks with signage: sometimes missing, inconsistent between operators, wrong language first.
@@ -33,7 +33,7 @@ Each milestone ships as one reviewable PR that is playable on its own.
 - Segment variety: subway interchange, bus stop, bike lanes, e-scooters, rain, rush-hour surge.
 - Commuter personas for the player (tourist with suitcase, tired shift worker, crutches) with distinct handling.
 
-### M3: Walk to continue (the twist)
+### M3: Walk to continue (the twist) (done)
 Browsers cannot read a pedometer, and a page gets no sensor data once the screen locks, so we combine
 two modes and let the player pick:
 
@@ -47,9 +47,12 @@ two modes and let the player pick:
   `visibilitychange` timestamps give time away. Credit = capped time away x calibrated cadence,
   discounted. An optional one-shot location fix at start and end (Geolocation, only if the player
   opts in) turns it into verified distance, which earns full credit and a bonus. No tracking, no upload.
-- Required pure steps grow with every continue within a run (for example 150, 300, 600, ...), and reset
-  with a new run. Progress is saved so a walk survives closing the app.
-- Calibration screen to learn the player's cadence and stride.
+- Required pure steps grow with every continue within a run (100, 200, 350, 550, 800, 1100, 1500), and
+  reset with a new run. Progress is saved so a walk survives closing the app. Giving up banks the run
+  score and starts over from Commute 1, so walking is the only way to keep a run alive.
+- Steps are held back for two seconds before they count, so picking the phone up cannot bank them.
+- Not done yet: a calibration screen to learn the player's own cadence and stride (defaults: 100 steps
+  per minute, 0.74 m stride).
 
 ### M4: Addictive loop and progression
 - Daily commute (shared seed), city themes (Tokyo, Seoul, Shanghai, Paris/Berlin looks and signage),

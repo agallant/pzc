@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { generateLevel } from '../src/game/level';
+import { circleRectPush } from '../src/game/geometry';
+import { PERSONAS } from '../src/game/personas';
 import { findPath } from './helpers';
 
 describe('generateLevel', () => {
@@ -15,7 +17,7 @@ describe('generateLevel', () => {
     for (let number = 1; number <= 20; number++) {
       for (let seed = 1; seed <= 6; seed++) {
         const level = generateLevel(number, seed * 7919);
-        expect(findPath(level), `level ${number} seed ${seed}`).not.toBeNull();
+        expect(findPath(level, { lift: true }), `level ${number} seed ${seed}`).not.toBeNull();
       }
     }
   });
@@ -40,5 +42,96 @@ describe('generateLevel', () => {
     const late = generateLevel(15, 99);
     expect(late.zombies.length).toBeGreaterThan(early.zombies.length);
     expect(late.height).toBeGreaterThan(early.height);
+  });
+});
+
+function levelWith(predicate: (l: ReturnType<typeof generateLevel>) => boolean, number = 8) {
+  for (let seed = 1; seed < 400; seed++) {
+    const level = generateLevel(number, seed);
+    if (predicate(level)) return level;
+  }
+  throw new Error('no matching level');
+}
+
+describe('transit features', () => {
+  it('introduces the transit hall at commute 2 and signage forks at commute 3', () => {
+    expect(generateLevel(1, 5).lift).toBeNull();
+    expect(generateLevel(2, 5).lift).not.toBeNull();
+    expect(generateLevel(2, 5).wrongWay).toBeNull();
+    expect(generateLevel(3, 5).wrongWay).not.toBeNull();
+    expect(generateLevel(3, 5).persona).toBe('commuter');
+  });
+
+  it('gives every persona a way through', () => {
+    for (const persona of ['commuter', 'suitcase', 'tired', 'crutches', 'wheelchair'] as const) {
+      for (let k = 0; k < 4; k++) {
+        const level = levelWith((l) => l.persona === persona && l.seed > k * 50);
+        expect(findPath(level, { lift: true }), `${persona} seed ${level.seed}`).not.toBeNull();
+      }
+    }
+  });
+
+  it('keeps wheelchair routes off the stairs and escalator, and the lift working', () => {
+    for (let k = 0; k < 5; k++) {
+      const level = levelWith((l) => l.persona === 'wheelchair' && l.seed > k * 60);
+      expect(level.lift?.working).toBe(true);
+      const path = findPath(level, { lift: true }) ?? [];
+      expect(path.length).toBeGreaterThan(0);
+      const steps = level.zones.filter((z) => z.floor === 'stairs' || z.floor === 'escalator');
+      expect(steps.length).toBeGreaterThan(0);
+      for (const pt of path) {
+        const onSteps = steps.some((z) => pt.x > z.x && pt.x < z.x + z.w && pt.y > z.y && pt.y < z.y + z.h);
+        expect(onSteps).toBe(false);
+      }
+    }
+  });
+
+  it('makes the wrong branch a dead end that the route never enters', () => {
+    for (let k = 0; k < 6; k++) {
+      const level = levelWith((l) => l.wrongWay !== null && l.seed > k * 40, 5);
+      const ww = level.wrongWay!;
+      for (const pt of findPath(level, { lift: true }) ?? []) {
+        const inside = pt.x > ww.x && pt.x < ww.x + ww.w && pt.y > ww.y && pt.y < ww.y + ww.h;
+        expect(inside).toBe(false);
+      }
+    }
+  });
+
+  it('signs the correct platform when signage is clear', () => {
+    const level = levelWith((l) => l.signMode === 'clear', 6);
+    const texts = level.decor.filter((d) => d.kind === 'forkSign').map((d) => d.text);
+    expect(texts).toContain(`Platform ${level.platform}`);
+    expect(texts.length).toBe(2);
+  });
+
+  it('leaves the correct sign out when signage is missing', () => {
+    const level = levelWith((l) => l.signMode === 'missing', 8);
+    const signs = level.decor.filter((d) => d.kind === 'forkSign');
+    expect(signs.length).toBe(1);
+    expect(signs[0]?.text).not.toBe(`Platform ${level.platform}`);
+  });
+
+  it('lets everyone but wheelchair users walk through on foot', () => {
+    for (let k = 0; k < 8; k++) {
+      const level = levelWith((l) => l.persona !== 'wheelchair' && l.seed > k * 30);
+      expect(findPath(level), `${level.persona} seed ${level.seed}`).not.toBeNull();
+    }
+  });
+
+  it('seals the stairs and escalator at both ends for a wheelchair user', () => {
+    for (let k = 0; k < 5; k++) {
+      const level = levelWith((l) => l.persona === 'wheelchair' && l.seed > k * 60);
+      const r = PERSONAS.wheelchair.radius;
+      const steps = level.zones.filter((z) => z.floor === 'stairs' || z.floor === 'escalator');
+      expect(steps.length).toBe(2);
+      for (const z of steps) {
+        for (const edge of [z.y + 0.2, z.y + z.h - 0.2]) {
+          for (let x = z.x + 0.5; x < z.x + z.w; x += 0.5) {
+            const blocked = level.walls.some((w) => circleRectPush({ x, y: edge, r }, w));
+            expect(blocked, `seed ${level.seed} x=${x} y=${edge}`).toBe(true);
+          }
+        }
+      }
+    }
   });
 });

@@ -1,4 +1,5 @@
 import { MAX_HP, type Game } from '../game/sim';
+import type { Persona } from '../game/personas';
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls: string, text = ''): HTMLElementTagNameMap[K] {
   const e = document.createElement(tag);
@@ -79,7 +80,7 @@ export class Hud {
       this.combo.textContent = game.combo > 1 ? `x${game.combo}` : '';
     });
     this.set('stam', String(Math.round(p.stamina / 2)), () => {
-      this.staminaFill.style.width = `${p.stamina}%`;
+      this.staminaFill.style.width = `${(100 * p.stamina) / p.staminaMax}%`;
     });
     this.set('exh', String(p.exhausted), () => this.stamina.classList.toggle('exhausted', p.exhausted));
     this.set('boost', String(p.boost > 0), () => this.stamina.classList.toggle('boosted', p.boost > 0));
@@ -91,6 +92,11 @@ export class Hud {
       this.toastTimer -= dt;
       if (this.toastTimer <= 0) this.toast.classList.remove('show');
     }
+  }
+
+  configure(persona: Persona): void {
+    this.sprint.hidden = !persona.canSprint;
+    this.stamina.style.width = `min(${persona.staminaMax * 1.5}px, 34vw)`;
   }
 
   say(text: string, seconds = 1.8): void {

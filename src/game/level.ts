@@ -1,9 +1,11 @@
 import { circleRectPush } from './geometry';
+import { PERSONAS, type Persona, type PersonaId } from './personas';
 import { createRng, type Rng } from './rng';
-import type { Decor, Level, PickupSpec, Rect, ThemeId, Wall, WallKind, Zone, ZombieKind, ZombieSpec } from './types';
+import type {
+  Decor, LiftSpec, Level, PickupSpec, Rect, SignMode, ThemeId, Wall, WallKind, Zone, ZombieKind, ZombieSpec,
+} from './types';
 
 export const WORLD_W = 14;
-const PLAYER_R = 0.3;
 const START_CLEAR = 8;
 const TRAIN_H = 4;
 const THEMES: ThemeId[] = ['sakura', 'hangang', 'jade', 'rhine'];
@@ -14,7 +16,33 @@ const NAME_A = [
 ];
 const NAME_B = ['Central', 'Gate', 'Plaza', 'Junction', 'Yard', 'Cross', 'Market', 'Park', 'Terminal', 'Hills'];
 
+export const BELT_SPEED = 1.5;
+const PLATFORM_COLORS = ['#e8506a', '#2d7be0', '#2fb36b', '#e0a82d'];
+
+interface Words {
+  platform: string;
+  track: (n: number) => string;
+  stairs: string;
+  escalator: string;
+  lift: string;
+  closed: string;
+}
+
+/** Local-language signage for each look; English appears alongside it only when signage is "clear". */
+const WORDS: Record<ThemeId, Words> = {
+  sakura: { platform: 'ホーム', track: (n) => `${n}番線`, stairs: '階段', escalator: 'エスカレーター', lift: 'エレベーター', closed: '閉鎖' },
+  hangang: { platform: '승강장', track: (n) => `${n}번 승강장`, stairs: '계단', escalator: '에스컬레이터', lift: '엘리베이터', closed: '폐쇄' },
+  jade: { platform: '站台', track: (n) => `${n}号站台`, stairs: '楼梯', escalator: '扶梯', lift: '电梯', closed: '关闭' },
+  rhine: { platform: 'Gleis', track: (n) => `Gleis ${n}`, stairs: 'Treppe', escalator: 'Rolltreppe', lift: 'Aufzug', closed: 'Gesperrt' },
+};
+
 interface Ctx {
+  persona: Persona;
+  words: Words;
+  platform: number;
+  signMode: SignMode;
+  lift: LiftSpec | null;
+  wrongWay: Rect | null;
   rng: Rng;
   diff: number;
   zones: Zone[];
@@ -26,7 +54,7 @@ interface Ctx {
   height: number;
 }
 
-type SegmentKind = 'street' | 'crossing' | 'concourse' | 'platform';
+type SegmentKind = 'street' | 'crossing' | 'concourse' | 'fork' | 'transit' | 'platform';
 interface SegmentPlan {
   kind: SegmentKind;
   len: number;
@@ -223,7 +251,7 @@ function buildConcourse(ctx: Ctx, yTop: number, yBot: number): void {
     ctx.decor.push({ kind: 'gateLight', x, y: gateY + 1.1, w: gapW, h: 0.5, index: closed.has(i) ? 0 : 1 });
     x += gapW;
   }
-  ctx.decor.push({ kind: 'sign', x: 3, y: yTop + 1.0, w: 8, h: 1.2, text: 'platform' });
+  ctx.decor.push({ kind: 'sign', x: 2.5, y: yTop + 1.0, w: 9, h: 1.2, text: `Platforms ▲  ${ctx.words.platform}` });
 
   // Commuter streams cross the hall wall to wall, never looking up.
   const lanes = Math.min(laneYs.length, 2 + Math.floor(diff / 3));
@@ -272,6 +300,7 @@ function buildPlatform(ctx: Ctx, yTop: number, yBot: number): Rect {
   wall(ctx, 'train', x, yTop + 2.2, WORLD_W - x, TRAIN_H - 2.2);
   wall(ctx, 'barrier', 0, yTop + TRAIN_H, 0.7, len - TRAIN_H);
   wall(ctx, 'barrier', WORLD_W - 0.7, yTop + TRAIN_H, 0.7, len - TRAIN_H);
+  ctx.decor.push({ kind: 'sign', x: 3.5, y: yTop + 0.5, w: 7, h: 1.2, text: `Platform ${ctx.platform}`, sub: ctx.words.track(ctx.platform), chip: PLATFORM_COLORS[ctx.platform - 1] });
   ctx.decor.push({ kind: 'yellowLine', x: 0, y: yTop + TRAIN_H + 0.35, w: WORLD_W, h: 0.25 });
   ctx.decor.push({ kind: 'doorMarker', x: doorX(goalDoor) - 1.0, y: yTop + 2.2, w: 2.0, h: 1.8, index: goalDoor });
 
@@ -309,22 +338,181 @@ function buildPlatform(ctx: Ctx, yTop: number, yBot: number): Rect {
   return { x: doorX(goalDoor) - 0.9, y: yTop + 2.2, w: 1.8, h: 0.9 };
 }
 
+
+function buildFork(ctx: Ctx, yTop: number, yBot: number): void {
+  const { rng, diff, words, platform, signMode } = ctx;
+  const len = yBot - yTop;
+  ctx.zones.push({ floor: 'concourse', x: 0, y: yTop, w: WORLD_W, h: len });
+  wall(ctx, 'building', 0, yTop, 1.4, len);
+  wall(ctx, 'building', WORLD_W - 1.4, yTop, 1.4, len);
+
+  const left: Rect = { x: 1.4, y: yTop, w: 5.3, h: len };
+  const right: Rect = { x: 7.3, y: yTop, w: 5.3, h: len };
+  const correctLeft = rng.chance(0.5);
+  const correct = correctLeft ? left : right;
+  const wrong = correctLeft ? right : left;
+  const capH = 3.2;
+  // The divider runs up to a shuttered dead end behind the wrong sign.
+  wall(ctx, 'pillar', 6.7, yTop + capH, 0.6, len - capH - 4);
+  wall(ctx, 'gate', correctLeft ? 6.7 : 1.4, yTop, 5.9, capH);
+  ctx.wrongWay = { x: wrong.x, y: yTop + capH, w: wrong.w, h: 4 };
+  ctx.decor.push({
+    kind: 'notice',
+    x: wrong.x + 0.4,
+    y: yTop + 0.8,
+    w: wrong.w - 0.8,
+    h: 1.4,
+    text: `CLOSED  ${words.closed}`,
+    chip: '#b33a3a',
+  });
+
+  // Signs, in the style this station uses (and sometimes not at all).
+  const other = platform === 1 ? 2 : platform === 4 ? 3 : rng.chance(0.5) ? platform - 1 : platform + 1;
+  const panel = (area: Rect, n: number, arrow: 'left' | 'right'): void => {
+    const clear = signMode === 'clear' || signMode === 'missing';
+    ctx.decor.push({
+      kind: 'forkSign',
+      x: area.x + 0.2,
+      y: yBot - 2.8,
+      w: area.w - 0.4,
+      h: 1.7,
+      text: clear ? `Platform ${n}` : words.track(n),
+      sub: clear && signMode !== 'missing' ? words.track(n) : clear ? words.platform : undefined,
+      arrow,
+      chip: PLATFORM_COLORS[n - 1],
+      index: n,
+    });
+  };
+  const dirOf = (a: Rect): 'left' | 'right' => (a === left ? 'left' : 'right');
+  panel(wrong, other, dirOf(wrong));
+  if (signMode !== 'missing') panel(correct, platform, dirOf(correct));
+  // Many stations paint a coloured guidance line on the floor. Trust it.
+  if (rng.chance(signMode === 'clear' ? 0.35 : signMode === 'local' ? 0.6 : 0.85)) {
+    const bx = correct.x + correct.w / 2;
+    const color = PLATFORM_COLORS[platform - 1];
+    ctx.decor.push({ kind: 'floorLine', x: Math.min(7, bx) - 0.17, y: yBot - 0.9, w: Math.abs(7 - bx) + 0.34, h: 0.34, chip: color });
+    ctx.decor.push({ kind: 'floorLine', x: bx - 0.17, y: yTop + capH, w: 0.34, h: len - capH - 0.9 + 0.34, chip: color });
+  }
+
+  const count = Math.round(len * (0.07 + 0.006 * diff));
+  for (const branch of [left, right]) {
+    spawnWanderers(ctx, { x: branch.x + 0.4, y: yTop + capH + 1, w: branch.w - 0.8, h: len - capH - 6 }, Math.max(1, Math.round(count / 2)));
+  }
+  coinTrail(ctx, yTop + capH, yBot);
+}
+
+function buildTransit(ctx: Ctx, yTop: number, yBot: number): void {
+  const { rng, diff, words, persona } = ctx;
+  const len = yBot - yTop;
+  const landing = 3.2;
+  const hallTop = yTop + landing;
+  const hallBot = yBot - landing;
+  const hallLen = hallBot - hallTop;
+  ctx.zones.push({ floor: 'concourse', x: 0, y: yTop, w: WORLD_W, h: len });
+  wall(ctx, 'building', 0, yTop, 1.4, len);
+  wall(ctx, 'building', WORLD_W - 1.4, yTop, 1.4, len);
+
+  const stepFree = persona.stairsSpeed === 0;
+  const escWorking = !stepFree && !rng.chance(0.12);
+  const liftWorking = stepFree || !rng.chance(Math.min(0.3, 0.1 + 0.012 * diff));
+  const stairs: Rect = { x: 1.4, y: hallTop, w: 5.4, h: hallLen };
+  const esc: Rect = { x: 7.1, y: hallTop, w: 2.2, h: hallLen };
+  ctx.zones.push({ floor: 'stairs', ...stairs });
+  ctx.zones.push({ floor: escWorking ? 'escalator' : 'stairs', ...esc });
+  wall(ctx, 'barrier', 6.8, hallTop, 0.3, hallLen);
+  wall(ctx, 'barrier', 9.3, hallTop, 1.1, hallLen);
+  wall(ctx, 'shaft', 10.4, hallTop, 2.2, hallLen);
+
+  const from: Rect = { x: 10.5, y: yBot - 3.0, w: 2.0, h: 1.6 };
+  const to: Rect = { x: 10.5, y: yTop + 1.4, w: 2.0, h: 1.6 };
+  ctx.lift = { from, to, working: liftWorking };
+  ctx.decor.push({ kind: 'lift', ...from, index: 0 });
+  ctx.decor.push({ kind: 'lift', ...to, index: 1 });
+  if (!liftWorking) {
+    wall(ctx, 'barrier', from.x, from.y, from.w, from.h);
+    ctx.decor.push({ kind: 'notice', x: from.x - 0.1, y: from.y + 0.1, w: from.w + 0.2, h: 1.2, text: 'OUT OF ORDER', chip: '#b33a3a' });
+  }
+  if (stepFree) {
+    // No step-free access on these two: closed to you, exactly as in a real station.
+    wall(ctx, 'barrier', stairs.x, hallBot - 0.35, stairs.w, 0.35);
+    wall(ctx, 'barrier', esc.x, hallBot - 0.35, esc.w, 0.35);
+    // ...and from the top, where the lift lets you out: stairs give a wheelchair no speed at all.
+    wall(ctx, 'barrier', stairs.x, hallTop, stairs.w, 0.35);
+    wall(ctx, 'barrier', esc.x, hallTop, esc.w, 0.35);
+    ctx.decor.push({ kind: 'notice', x: 2.4, y: hallBot - 1.9, w: 7.8, h: 1.2, text: 'NO STEP-FREE ACCESS', chip: '#b33a3a' });
+  } else if (!escWorking) {
+    ctx.decor.push({ kind: 'notice', x: esc.x, y: hallBot + 0.2, w: esc.w, h: 1.0, text: 'OUT OF ORDER', chip: '#b33a3a' });
+  }
+  const sign = (x: number, w: number, text: string): void => {
+    ctx.decor.push({ kind: 'sign', x, y: yBot - 1.6, w, h: 1.0, text });
+  };
+  sign(1.6, 5.0, `Stairs  ${words.stairs}`);
+  sign(7.0, 2.4, words.escalator);
+  sign(10.4, 2.2, `Lift  ${words.lift}`);
+
+  // Commuters on the stairs, and riders standing on the escalator: right side stands, left side walks.
+  spawnWanderers(ctx, { x: stairs.x + 0.5, y: hallTop + 1.5, w: stairs.w - 1.0, h: hallLen - 3 }, Math.round(hallLen * (0.09 + 0.006 * diff)));
+  if (escWorking) {
+    const blockerP = Math.min(0.35, 0.08 + 0.02 * diff);
+    for (let y = esc.y + 0.8; y < esc.y + esc.h - 0.4; y += 2.4) {
+      if (rng.chance(0.25)) continue;
+      const blocker = rng.chance(blockerP);
+      addZombie(ctx, {
+        kind: 'rider',
+        x: blocker ? esc.x + 0.55 : esc.x + 1.6,
+        y: y + rng.range(-0.3, 0.3),
+        heading: -Math.PI / 2,
+        speed: BELT_SPEED,
+        weave: 0,
+        lane: esc,
+      });
+    }
+  }
+}
+
 function planSegments(number: number, rng: Rng): SegmentPlan[] {
   const plan: SegmentPlan[] = [{ kind: 'street', len: 24 + rng.int(0, 8) }];
   if (number >= 2 || rng.chance(0.4)) plan.push({ kind: 'crossing', len: 15 });
   if (number >= 3) plan.push({ kind: 'street', len: 16 + rng.int(0, 6) });
   if (number >= 5 && rng.chance(0.6)) plan.push({ kind: 'crossing', len: 15 });
   plan.push({ kind: 'concourse', len: Math.min(42, 30 + Math.floor(number / 2)) });
+  if (number >= 3) plan.push({ kind: 'fork', len: 22 });
+  if (number >= 2) plan.push({ kind: 'transit', len: 24 });
   plan.push({ kind: 'platform', len: 34 });
   return plan;
+}
+
+function pickPersona(number: number, rng: Rng): PersonaId {
+  if (number < 4) return 'commuter';
+  const roll = rng.next();
+  if (roll < 0.4) return 'commuter';
+  if (roll < 0.6) return 'suitcase';
+  if (roll < 0.75) return 'tired';
+  if (roll < 0.9) return 'crutches';
+  return 'wheelchair';
+}
+
+function pickSignMode(number: number, rng: Rng): SignMode {
+  if (number < 5) return 'clear';
+  const roll = rng.next();
+  return roll < 0.4 ? 'clear' : roll < 0.75 ? 'local' : 'missing';
 }
 
 export function generateLevel(number: number, seed: number): Level {
   const rng = createRng(seed ^ Math.imul(number, 0x9e3779b1));
   const diff = number - 1;
+  const personaId = pickPersona(number, rng);
+  const persona = PERSONAS[personaId];
+  const theme = rng.pick(THEMES);
   const plan = planSegments(number, rng);
   const height = plan.reduce((sum, s) => sum + s.len, 0);
   const ctx: Ctx = {
+    persona,
+    words: WORDS[theme],
+    platform: rng.int(1, 4),
+    signMode: pickSignMode(number, rng),
+    lift: null,
+    wrongWay: null,
     rng,
     diff,
     zones: [],
@@ -344,6 +532,8 @@ export function generateLevel(number: number, seed: number): Level {
     if (seg.kind === 'street') buildStreet(ctx, yTop, yBot);
     else if (seg.kind === 'crossing') buildCrossing(ctx, yTop, yBot);
     else if (seg.kind === 'concourse') buildConcourse(ctx, yTop, yBot);
+    else if (seg.kind === 'fork') buildFork(ctx, yTop, yBot);
+    else if (seg.kind === 'transit') buildTransit(ctx, yTop, yBot);
     else {
       goal = buildPlatform(ctx, yTop, yBot);
       goalDoor = ctx.decor.find((d) => d.kind === 'doorMarker')?.index ?? 0;
@@ -362,11 +552,18 @@ export function generateLevel(number: number, seed: number): Level {
   }
 
   const waits = ctx.crossings.length * 7;
-  const timeLimit = Math.ceil(height / 3.1 + 14 + waits - Math.min(10, diff * 0.8));
+  const extras = (plan.some((s) => s.kind === 'transit') ? 8 : 0) + (plan.some((s) => s.kind === 'fork') ? 6 : 0);
+  const base = height / (persona.speed * 0.91) + 14 + waits + extras - Math.min(10, diff * 0.8);
+  const timeLimit = Math.ceil(base * (1 + persona.timeBonus));
   return {
+    persona: personaId,
+    platform: ctx.platform,
+    signMode: plan.some((s) => s.kind === 'fork') ? ctx.signMode : null,
+    lift: ctx.lift,
+    wrongWay: ctx.wrongWay,
     number,
     seed,
-    theme: rng.pick(THEMES),
+    theme,
     from: name(rng),
     to: name(rng),
     car: goalDoor + 1,
@@ -383,5 +580,3 @@ export function generateLevel(number: number, seed: number): Level {
     crossings: ctx.crossings,
   };
 }
-
-export const PLAYER_RADIUS = PLAYER_R;

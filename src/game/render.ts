@@ -1,7 +1,8 @@
 import type { StickView } from '../platform/input';
 import { STICK_MAX } from '../platform/input';
 import { clamp } from './geometry';
-import { PLAYER_RADIUS } from './level';
+import { BELT_SPEED } from './level';
+import type { PersonaId } from './personas';
 import { CAR_H, CAR_W, signalState, ZOMBIE_R, type Game, type GameEvent, type Zombie } from './sim';
 import type { Decor, Rect, ThemeId, Wall } from './types';
 
@@ -16,30 +17,34 @@ interface Palette {
   platform: string;
   train: string;
   accent: string;
-  sign: string;
 }
 
 const PALETTES: Record<ThemeId, Palette> = {
   sakura: {
     pave: '#c9bfc4', paveLine: '#b7abb2', road: '#3a3d48', building: '#4f4663', buildingLit: '#ffd98a',
     concourse: '#dcd8d2', concourseAlt: '#cfcac3', platform: '#c4cad6', train: '#d7dde6', accent: '#e8506a',
-    sign: 'ホーム  Platform  ▲',
   },
   hangang: {
     pave: '#b8c3cd', paveLine: '#a6b2bd', road: '#343a44', building: '#2f4560', buildingLit: '#9fd8ff',
     concourse: '#d6dde3', concourseAlt: '#c8d1d9', platform: '#bcc8d4', train: '#dfe6ee', accent: '#2d7be0',
-    sign: '승강장  Platform  ▲',
   },
   jade: {
     pave: '#cdbf9f', paveLine: '#bbad8d', road: '#3d3a38', building: '#6b3a35', buildingLit: '#ffe08a',
     concourse: '#e2d8c3', concourseAlt: '#d5c9b0', platform: '#cfc6b3', train: '#e6e1d4', accent: '#d93a2e',
-    sign: '站台  Platform  ▲',
   },
   rhine: {
     pave: '#b7ad9f', paveLine: '#a49a8c', road: '#383a3c', building: '#5d4a3f', buildingLit: '#ffe0a0',
     concourse: '#d9d4c9', concourseAlt: '#cbc5b9', platform: '#c3c0b8', train: '#e2e4e2', accent: '#2f8f5b',
-    sign: 'Gleis  Quai  Platform  ▲',
   },
+};
+
+const OVERLAY = new Set(['sign', 'forkSign', 'notice', 'doorMarker']);
+const COAT_BY_PERSONA: Record<PersonaId, string> = {
+  commuter: '#ff9f43',
+  suitcase: '#e8648a',
+  tired: '#8f86d9',
+  crutches: '#4fc3a1',
+  wheelchair: '#4aa3e0',
 };
 
 const SKINS = ['#e9c4a3', '#d2a37c', '#b57b57', '#f1d2b8', '#8d5a3c', '#e0b48f'];
@@ -190,10 +195,11 @@ export function drawGame(
   ctx.rect(0, 0, game.level.width, game.level.height);
   ctx.clip();
 
-  drawFloors(ctx, game, pal, x0, y0, x1, y1);
-  for (const d of game.level.decor) if (visible(d, x0, y0, x1, y1)) drawDecor(ctx, d, game, pal, time);
+  drawFloors(ctx, game, pal, x0, y0, x1, y1, time);
+  for (const d of game.level.decor) if (!OVERLAY.has(d.kind) && visible(d, x0, y0, x1, y1)) drawDecor(ctx, d, game, time);
   drawPickups(ctx, game, time, x0, y0, x1, y1);
   for (const wl of game.level.walls) if (visible(wl, x0, y0, x1, y1)) drawWall(ctx, wl, pal);
+  for (const d of game.level.decor) if (OVERLAY.has(d.kind) && visible(d, x0, y0, x1, y1)) drawDecor(ctx, d, game, time);
 
   const people: { y: number; draw: () => void }[] = [];
   for (const z of game.zombies) {
@@ -235,7 +241,7 @@ export function drawGame(
   if (stick?.active) drawStick(ctx, stick, dpr);
 }
 
-function drawFloors(ctx: CanvasRenderingContext2D, game: Game, pal: Palette, x0: number, y0: number, x1: number, y1: number): void {
+function drawFloors(ctx: CanvasRenderingContext2D, game: Game, pal: Palette, x0: number, y0: number, x1: number, y1: number, time: number): void {
   for (const z of game.level.zones) {
     if (!visible(z, x0, y0, x1, y1)) continue;
     const top = Math.max(z.y, y0);
@@ -286,6 +292,33 @@ function drawFloors(ctx: CanvasRenderingContext2D, game: Game, pal: Palette, x0:
         ctx.fillStyle = '#9aa5b1';
         ctx.fillRect(z.x, z.y, z.w, z.h);
         break;
+      case 'stairs': {
+        ctx.fillStyle = '#bdb6ab';
+        ctx.fillRect(z.x, z.y, z.w, z.h);
+        ctx.fillStyle = 'rgba(0,0,0,0.12)';
+        for (let y = Math.ceil(top / 0.9) * 0.9; y < bot; y += 0.9) ctx.fillRect(z.x, y, z.w, 0.45);
+        ctx.fillStyle = 'rgba(255,255,255,0.5)';
+        for (let y = Math.ceil(top / 0.9) * 0.9; y < bot; y += 0.9) ctx.fillRect(z.x, y, z.w, 0.07);
+        ctx.fillStyle = 'rgba(16,32,42,0.35)';
+        ctx.font = '800 1.1px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        for (let y = z.y + 3; y < z.y + z.h - 1; y += 6) ctx.fillText('▲', z.x + z.w / 2, y);
+        break;
+      }
+      case 'escalator': {
+        ctx.fillStyle = '#58626e';
+        ctx.fillRect(z.x, z.y, z.w, z.h);
+        ctx.fillStyle = 'rgba(255,255,255,0.22)';
+        const off = (time * BELT_SPEED) % 0.4;
+        for (let y = Math.floor(top / 0.4) * 0.4 - off; y < bot; y += 0.4) ctx.fillRect(z.x, y, z.w, 0.06);
+        ctx.fillStyle = '#f2c230';
+        ctx.fillRect(z.x + z.w / 2 - 0.03, z.y, 0.06, z.h);
+        ctx.fillStyle = '#2b323a';
+        ctx.fillRect(z.x, z.y, 0.12, z.h);
+        ctx.fillRect(z.x + z.w - 0.12, z.y, 0.12, z.h);
+        break;
+      }
     }
   }
 }
@@ -353,6 +386,15 @@ function drawWall(ctx: CanvasRenderingContext2D, wl: Wall, pal: Palette): void {
       ctx.fillStyle = 'rgba(255,255,255,0.25)';
       ctx.fillRect(x, y, w, h < w ? h : 0.1);
       break;
+    case 'shaft':
+      ctx.fillStyle = '#8c97a3';
+      ctx.fillRect(x, y, w, h);
+      ctx.fillStyle = 'rgba(255,255,255,0.25)';
+      ctx.fillRect(x + 0.15, y + 0.15, w - 0.3, h - 0.3);
+      ctx.strokeStyle = '#6a7580';
+      ctx.lineWidth = 0.08;
+      ctx.strokeRect(x + 0.15, y + 0.15, w - 0.3, h - 0.3);
+      break;
     case 'train': {
       ctx.fillStyle = pal.train;
       ctx.fillRect(x, y, w, h);
@@ -367,7 +409,7 @@ function drawWall(ctx: CanvasRenderingContext2D, wl: Wall, pal: Palette): void {
   }
 }
 
-function drawDecor(ctx: CanvasRenderingContext2D, d: Decor, game: Game, pal: Palette, time: number): void {
+function drawDecor(ctx: CanvasRenderingContext2D, d: Decor, game: Game, time: number): void {
   switch (d.kind) {
     case 'crosswalk':
       ctx.fillStyle = 'rgba(245,245,238,0.92)';
@@ -380,17 +422,95 @@ function drawDecor(ctx: CanvasRenderingContext2D, d: Decor, game: Game, pal: Pal
       for (let x = d.x + 0.3; x < d.x + d.w; x += 0.6) ctx.fillRect(x, d.y + d.h + 0.15, 0.22, 0.22);
       break;
     case 'sign': {
-      const label = pal.sign;
       ctx.fillStyle = '#1f3d63';
       ctx.fillRect(d.x, d.y, d.w, d.h);
       ctx.strokeStyle = '#ffffff';
       ctx.lineWidth = 0.06;
       ctx.strokeRect(d.x + 0.08, d.y + 0.08, d.w - 0.16, d.h - 0.16);
+      if (d.chip) {
+        ctx.fillStyle = d.chip;
+        ctx.fillRect(d.x + 0.08, d.y + 0.08, 0.3, d.h - 0.16);
+      }
       ctx.fillStyle = '#ffffff';
-      ctx.font = '700 0.55px system-ui, sans-serif';
+      ctx.font = `700 ${Math.min(0.55, d.h * 0.46)}px system-ui, sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(label, d.x + d.w / 2, d.y + d.h / 2 + 0.02, d.w - 0.5);
+      const label = d.sub ? `${d.text ?? ''}  ${d.sub}` : (d.text ?? '');
+      ctx.fillText(label, d.x + d.w / 2, d.y + d.h / 2 + 0.02, d.w - 0.7);
+      break;
+    }
+    case 'forkSign': {
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.fillRect(d.x + 0.1, d.y + 0.12, d.w, d.h);
+      ctx.fillStyle = '#1f3d63';
+      ctx.fillRect(d.x, d.y, d.w, d.h);
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 0.07;
+      ctx.strokeRect(d.x + 0.08, d.y + 0.08, d.w - 0.16, d.h - 0.16);
+      const left = d.arrow === 'left';
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '800 0.9px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(left ? '\u25c0' : '\u25b6', left ? d.x + 0.65 : d.x + d.w - 0.65, d.y + d.h / 2);
+      const cx = left ? d.x + d.w - 0.7 : d.x + 0.7;
+      ctx.fillStyle = d.chip ?? '#888';
+      ctx.beginPath();
+      ctx.arc(cx, d.y + d.h / 2, 0.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '900 0.7px system-ui, sans-serif';
+      ctx.fillText(d.index !== undefined ? String(d.index) : '', cx, d.y + d.h / 2 + 0.03);
+      const mid = d.x + d.w / 2 + (left ? 0.1 : 0.0);
+      ctx.font = '800 0.52px system-ui, sans-serif';
+      ctx.fillText(d.text ?? '', mid, d.y + (d.sub ? d.h * 0.36 : d.h / 2), d.w - 2.9);
+      if (d.sub) {
+        ctx.font = '600 0.4px system-ui, sans-serif';
+        ctx.fillStyle = '#cfe0f5';
+        ctx.fillText(d.sub, mid, d.y + d.h * 0.72, d.w - 2.9);
+      }
+      break;
+    }
+    case 'notice': {
+      ctx.fillStyle = d.chip ?? '#b33a3a';
+      ctx.fillRect(d.x, d.y, d.w, d.h);
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 0.06;
+      ctx.strokeRect(d.x + 0.07, d.y + 0.07, d.w - 0.14, d.h - 0.14);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = `800 ${Math.min(0.5, d.h * 0.42)}px system-ui, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(d.text ?? '', d.x + d.w / 2, d.y + d.h / 2 + 0.02, d.w - 0.3);
+      break;
+    }
+    case 'floorLine':
+      ctx.fillStyle = d.chip ?? '#fff';
+      ctx.globalAlpha = 0.85;
+      ctx.fillRect(d.x, d.y, d.w, d.h);
+      ctx.globalAlpha = 1;
+      break;
+    case 'lift': {
+      const lift = game.level.lift;
+      const working = lift?.working ?? false;
+      ctx.fillStyle = working ? '#cfd8e0' : '#8b8f94';
+      ctx.fillRect(d.x, d.y, d.w, d.h);
+      ctx.strokeStyle = '#7b8793';
+      ctx.lineWidth = 0.08;
+      ctx.strokeRect(d.x + 0.05, d.y + 0.05, d.w - 0.1, d.h - 0.1);
+      ctx.fillStyle = working ? '#4a5560' : '#5b5f64';
+      ctx.font = '900 0.8px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(d.index === 0 ? '\u25b2' : '\u25cf', d.x + d.w / 2, d.y + d.h / 2);
+      const p = game.player;
+      if (d.index === 0 && working && p.pad > 0 && p.ride === null) {
+        ctx.strokeStyle = '#35c46a';
+        ctx.lineWidth = 0.18;
+        ctx.beginPath();
+        ctx.arc(d.x + d.w / 2, d.y + d.h / 2, 0.6, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, p.pad / 1.2));
+        ctx.stroke();
+      }
       break;
     }
     case 'gateLight':
@@ -570,6 +690,7 @@ function drawZombie(ctx: CanvasRenderingContext2D, z: Zombie, alpha: number, tim
 
 function drawPlayer(ctx: CanvasRenderingContext2D, game: Game, alpha: number): void {
   const p = game.player;
+  if (p.ride !== null) return;
   // After a hit the player flashes; with reduced motion they are just faded instead.
   const faded = p.invuln > 0 && (still || Math.floor(p.invuln * 10) % 2 === 0);
   if (faded && !still) return;
@@ -577,27 +698,60 @@ function drawPlayer(ctx: CanvasRenderingContext2D, game: Game, alpha: number): v
   const x = p.px + (p.x - p.px) * alpha;
   const y = p.py + (p.y - p.py) * alpha;
   const speed = Math.hypot(p.vx, p.vy);
+  const r = p.r;
+  const id = game.persona.id;
   if (p.boost > 0) {
     ctx.strokeStyle = 'rgba(201,139,91,0.55)';
     ctx.lineWidth = 0.08;
     ctx.beginPath();
-    ctx.arc(x, y, PLAYER_RADIUS * 2.1 + (still ? 0 : Math.sin(game.time * 12) * 0.05), 0, Math.PI * 2);
+    ctx.arc(x, y, r * 2.1 + (still ? 0 : Math.sin(game.time * 12) * 0.05), 0, Math.PI * 2);
     ctx.stroke();
   }
-  person(ctx, x, y, p.heading, PLAYER_RADIUS * 1.15, '#ff9f43', '#f1d2b8', game.time * (speed * 2.6), speed > 0.4);
+  person(ctx, x, y, p.heading, r * 1.15, COAT_BY_PERSONA[id], '#f1d2b8', game.time * (speed * 2.6), speed > 0.4 && id !== 'wheelchair');
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(p.heading);
-  ctx.fillStyle = '#3b6ea8'; // rucksack: you are tired, and carrying your whole day
-  ctx.fillRect(-PLAYER_RADIUS * 1.5, -PLAYER_RADIUS * 0.7, PLAYER_RADIUS * 0.9, PLAYER_RADIUS * 1.4);
-  ctx.fillStyle = '#2b2f3a'; // hair, because the player is the one looking up
-  ctx.beginPath();
-  ctx.arc(-PLAYER_RADIUS * 0.05, 0, PLAYER_RADIUS * 0.62, Math.PI * 0.5, Math.PI * 1.5);
-  ctx.fill();
+  if (id === 'commuter' || id === 'tired') {
+    ctx.fillStyle = id === 'tired' ? '#5a4a7a' : '#3b6ea8'; // rucksack: carrying the whole day
+    ctx.fillRect(-r * 1.5, -r * 0.7, r * 0.9, r * 1.4);
+  } else if (id === 'suitcase') {
+    ctx.fillStyle = '#c0392b';
+    ctx.fillRect(-r * 1.9, r * 0.9, r * 1.5, r * 1.0);
+    ctx.fillStyle = '#7f261c';
+    ctx.fillRect(-r * 1.9, r * 1.25, r * 1.5, r * 0.12);
+    ctx.strokeStyle = '#444';
+    ctx.lineWidth = r * 0.12;
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.4, r * 1.4);
+    ctx.lineTo(r * 0.3, r * 0.7);
+    ctx.stroke();
+  } else if (id === 'crutches') {
+    ctx.strokeStyle = '#9aa5ad';
+    ctx.lineWidth = r * 0.16;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(r * 0.1, -r * 0.9);
+    ctx.lineTo(r * 1.3, -r * 1.25);
+    ctx.moveTo(r * 0.1, r * 0.9);
+    ctx.lineTo(r * 1.3, r * 1.25);
+    ctx.stroke();
+  } else {
+    ctx.fillStyle = '#2b2f3a';
+    ctx.fillRect(-r * 0.9, -r * 1.25, r * 1.8, r * 0.38);
+    ctx.fillRect(-r * 0.9, r * 0.87, r * 1.8, r * 0.38);
+    ctx.fillStyle = '#7d8996';
+    ctx.fillRect(-r * 1.2, -r * 0.6, r * 0.5, r * 1.2);
+  }
+  if (id !== 'wheelchair') {
+    ctx.fillStyle = '#2b2f3a'; // hair, because the player is the one looking up
+    ctx.beginPath();
+    ctx.arc(-r * 0.05, 0, r * 0.62, Math.PI * 0.5, Math.PI * 1.5);
+    ctx.fill();
+  }
   ctx.fillStyle = '#ffffff';
   ctx.beginPath();
-  ctx.arc(PLAYER_RADIUS * 0.45, -PLAYER_RADIUS * 0.22, PLAYER_RADIUS * 0.11, 0, Math.PI * 2);
-  ctx.arc(PLAYER_RADIUS * 0.45, PLAYER_RADIUS * 0.22, PLAYER_RADIUS * 0.11, 0, Math.PI * 2);
+  ctx.arc(r * 0.45, -r * 0.22, r * 0.11, 0, Math.PI * 2);
+  ctx.arc(r * 0.45, r * 0.22, r * 0.11, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
   ctx.globalAlpha = 1;

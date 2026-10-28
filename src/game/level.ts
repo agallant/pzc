@@ -436,6 +436,9 @@ function buildTransit(ctx: Ctx, yTop: number, yBot: number): void {
     // No step-free access on these two: closed to you, exactly as in a real station.
     wall(ctx, 'barrier', stairs.x, hallBot - 0.35, stairs.w, 0.35);
     wall(ctx, 'barrier', esc.x, hallBot - 0.35, esc.w, 0.35);
+    // ...and from the top, where the lift lets you out: stairs give a wheelchair no speed at all.
+    wall(ctx, 'barrier', stairs.x, hallTop, stairs.w, 0.35);
+    wall(ctx, 'barrier', esc.x, hallTop, esc.w, 0.35);
     ctx.decor.push({ kind: 'notice', x: 2.4, y: hallBot - 1.9, w: 7.8, h: 1.2, text: 'NO STEP-FREE ACCESS', chip: '#b33a3a' });
   } else if (!escWorking) {
     ctx.decor.push({ kind: 'notice', x: esc.x, y: hallBot + 0.2, w: esc.w, h: 1.0, text: 'OUT OF ORDER', chip: '#b33a3a' });

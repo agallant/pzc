@@ -51,6 +51,9 @@ const SKINS = ['#e9c4a3', '#d2a37c', '#b57b57', '#f1d2b8', '#8d5a3c', '#e0b48f']
 const COATS = ['#6f8f7c', '#7d7aa6', '#a07a6c', '#6c86a8', '#98a06c', '#a8708f'];
 const CARS = ['#d84a4a', '#e3b341', '#4a8fd8', '#e8e8ea', '#3a3a42', '#59b36b'];
 
+/** Set from `Fx.reduced` at the start of each frame: when true, nothing on the canvas pulses, bobs or wobbles. */
+let still = false;
+
 export interface Camera {
   x: number;
   y: number;
@@ -168,6 +171,7 @@ export function drawGame(
   time: number,
 ): void {
   const pal = PALETTES[game.level.theme];
+  still = fx.reduced;
   const { w, h, dpr, scale } = vp;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.fillStyle = '#0b141a';
@@ -227,9 +231,9 @@ export function drawGame(
     ctx.font = '800 0.62px system-ui, sans-serif';
     ctx.lineWidth = 0.12;
     ctx.strokeStyle = '#10202a';
-    ctx.strokeText(t.text, t.x, t.y - k * 1.2);
+    ctx.strokeText(t.text, t.x, t.y - (still ? 0.6 : k * 1.2));
     ctx.fillStyle = t.color;
-    ctx.fillText(t.text, t.x, t.y - k * 1.2);
+    ctx.fillText(t.text, t.x, t.y - (still ? 0.6 : k * 1.2));
   }
   ctx.globalAlpha = 1;
   ctx.restore();
@@ -529,7 +533,7 @@ function drawDecor(ctx: CanvasRenderingContext2D, d: Decor, game: Game, time: nu
       }
       break;
     case 'doorMarker': {
-      const pulse = 0.55 + 0.25 * Math.sin(time * 5);
+      const pulse = still ? 0.7 : 0.55 + 0.25 * Math.sin(time * 5);
       ctx.fillStyle = `rgba(80,230,140,${pulse})`;
       ctx.fillRect(d.x + 0.15, d.y, d.w - 0.3, d.h);
       ctx.fillStyle = '#10202a';
@@ -537,14 +541,14 @@ function drawDecor(ctx: CanvasRenderingContext2D, d: Decor, game: Game, time: nu
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(`CAR ${game.level.car}`, d.x + d.w / 2, d.y + 0.6);
-      ctx.fillText('▲', d.x + d.w / 2, d.y + 1.3 - 0.12 * Math.sin(time * 6));
+      ctx.fillText('▲', d.x + d.w / 2, d.y + 1.3 - (still ? 0 : 0.12 * Math.sin(time * 6)));
       break;
     }
     case 'signal': {
       const s = signalState(game, d.index ?? 0);
       ctx.fillStyle = '#1b2026';
       ctx.fillRect(d.x, d.y, d.w, d.h);
-      const blink = !s.pedGreen || s.left > 3 || Math.floor(time * 4) % 2 === 0;
+      const blink = !s.pedGreen || s.left > 3 || still || Math.floor(time * 4) % 2 === 0;
       ctx.fillStyle = s.pedGreen ? (blink ? '#4cf08a' : '#1b5a35') : '#ff4d4d';
       ctx.beginPath();
       ctx.arc(d.x + d.w / 2, d.y + d.h / 2, d.w * 0.3, 0, Math.PI * 2);
@@ -562,7 +566,7 @@ function drawDecor(ctx: CanvasRenderingContext2D, d: Decor, game: Game, time: nu
 function drawPickups(ctx: CanvasRenderingContext2D, game: Game, time: number, x0: number, y0: number, x1: number, y1: number): void {
   for (const pk of game.pickups) {
     if (pk.taken || pk.x < x0 || pk.x > x1 || pk.y < y0 || pk.y > y1) continue;
-    const bob = Math.sin(time * 4 + pk.x * 3) * 0.06;
+    const bob = still ? 0 : Math.sin(time * 4 + pk.x * 3) * 0.06;
     if (pk.type === 'coin') {
       ctx.fillStyle = '#e7a915';
       ctx.beginPath();
@@ -687,7 +691,10 @@ function drawZombie(ctx: CanvasRenderingContext2D, z: Zombie, alpha: number, tim
 function drawPlayer(ctx: CanvasRenderingContext2D, game: Game, alpha: number): void {
   const p = game.player;
   if (p.ride !== null) return;
-  if (p.invuln > 0 && Math.floor(p.invuln * 10) % 2 === 0) return;
+  // After a hit the player flashes; with reduced motion they are just faded instead.
+  const faded = p.invuln > 0 && (still || Math.floor(p.invuln * 10) % 2 === 0);
+  if (faded && !still) return;
+  ctx.globalAlpha = faded ? 0.55 : 1;
   const x = p.px + (p.x - p.px) * alpha;
   const y = p.py + (p.y - p.py) * alpha;
   const speed = Math.hypot(p.vx, p.vy);
@@ -697,7 +704,7 @@ function drawPlayer(ctx: CanvasRenderingContext2D, game: Game, alpha: number): v
     ctx.strokeStyle = 'rgba(201,139,91,0.55)';
     ctx.lineWidth = 0.08;
     ctx.beginPath();
-    ctx.arc(x, y, r * 2.1 + Math.sin(game.time * 12) * 0.05, 0, Math.PI * 2);
+    ctx.arc(x, y, r * 2.1 + (still ? 0 : Math.sin(game.time * 12) * 0.05), 0, Math.PI * 2);
     ctx.stroke();
   }
   person(ctx, x, y, p.heading, r * 1.15, COAT_BY_PERSONA[id], '#f1d2b8', game.time * (speed * 2.6), speed > 0.4 && id !== 'wheelchair');
@@ -747,6 +754,7 @@ function drawPlayer(ctx: CanvasRenderingContext2D, game: Game, alpha: number): v
   ctx.arc(r * 0.45, r * 0.22, r * 0.11, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
+  ctx.globalAlpha = 1;
 }
 
 function drawStick(ctx: CanvasRenderingContext2D, s: StickView, dpr: number): void {

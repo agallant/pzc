@@ -18,20 +18,19 @@ updates:
     commit-message:
       prefix: ci
 
-  # TEMPLATE: uncomment once the app has a package.json. "npm" also covers pnpm and Yarn
-  # lockfiles; use "bun" for Bun.
-  # - package-ecosystem: npm
-  #   directory: /
-  #   schedule:
-  #     interval: weekly
-  #   cooldown:
-  #     default-days: 7
-  #   groups:
-  #     dev-dependencies:
-  #       dependency-type: development
-  #       update-types: [minor, patch]
-  #     dependencies:
-  #       dependency-type: production
-  #       update-types: [minor, patch]
-  #   commit-message:
-  #     prefix: deps
+  # npm also covers the lockfile.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    groups:
+      dev-dependencies:
+        dependency-type: development
+        update-types: [minor, patch]
+      dependencies:
+        dependency-type: production
+        update-types: [minor, patch]
+    commit-message:
+      prefix: deps

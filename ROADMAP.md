@@ -1,0 +1,74 @@
+# Roadmap
+
+North star: a fun, addictive arcade game that quietly nudges people to put the phone away and walk.
+Each milestone ships as one reviewable PR that is playable on its own.
+
+## Design pillars
+
+1. **Real-time and physical.** You steer a person through a crowd with a thumb. No turn-taking.
+2. **The crowd is the enemy and the joke.** Phone zombies are predictable *if you read their tells*
+   (a notification glow, then a dead stop; herds that walk abreast; streams that never look up).
+3. **Transit is hostile to tired people.** Confusing signage, stairs, crowds and broken gates
+   are obstacles in their own right, and your character gets tired, burdened or injured.
+4. **Bite-sized.** A commute is 1 to 2 minutes, generated from a seed. Always "one more try".
+5. **The continue is the point.** Out of hearts means a real walk, phone away. It must be
+   honest about what a browser can know, and generous where it can't.
+
+## Milestones
+
+### M1: Bootstrap and the core commute (this PR)
+- Vite + TypeScript PWA: manifest, icons, offline service worker (previews excluded), update prompt.
+- Seeded level generator: street, signalled crossing, station concourse with ticket gates, platform with the train.
+- Fixed-timestep simulation (pure, unit-tested): player, sprint and stamina, zombie behaviours
+  (shufflers, herds, stoppers that ping first, commuter streams, crossing crowds, queues), cars on signal phases.
+- Hearts, timer ("doors close"), near-miss combo scoring, coins, coffee, stars, local progress.
+- Canvas renderer, floating joystick + run button, keyboard, synthesized sound, haptics, reduced-motion.
+- Menu, briefing, pause, results. Game over is a placeholder for M3.
+
+### M2: Mass transit is confusing
+- Stairs vs escalator vs elevator choices: stairs drain stamina, escalators are crowded and one-way,
+  elevators are slow and shared. Burden and fatigue modifiers change the numbers.
+- Forks with signage: sometimes missing, inconsistent between operators, wrong language first.
+  A foreigner mode where signs are glyph-only and you learn symbols across levels.
+- Segment variety: subway interchange, bus stop, bike lanes, e-scooters, rain, rush-hour surge.
+- Commuter personas for the player (tourist with suitcase, tired shift worker, crutches) with distinct handling.
+
+### M3: Walk to continue (the twist)
+Browsers cannot read a pedometer, and a page gets no sensor data once the screen locks, so we combine
+two modes and let the player pick:
+
+- **Pocket mode** (best accuracy, needs the motion-sensor permission): black screen with a wake lock,
+  `devicemotion` step detection (peak detection on gravity-removed acceleration, with cadence limits).
+  A step only counts as *pure* if there was no touch input and the phone is not held in the "zombie
+  posture" (tilted toward the face, steady). Touching the screen or lifting it up turns steps into
+  zombie steps, which are shown and not counted. iOS needs `DeviceMotionEvent.requestPermission()`
+  from a tap; Safari supports Screen Wake Lock since 16.4, with a fallback.
+- **Check-in mode** (works with the screen off): start a walk, lock the phone, and check in when back.
+  `visibilitychange` timestamps give time away. Credit = capped time away x calibrated cadence,
+  discounted. An optional one-shot location fix at start and end (Geolocation, only if the player
+  opts in) turns it into verified distance, which earns full credit and a bonus. No tracking, no upload.
+- Required pure steps grow with every continue within a run (for example 150, 300, 600, ...), and reset
+  with a new run. Progress is saved so a walk survives closing the app.
+- Calibration screen to learn the player's cadence and stride.
+
+### M4: Addictive loop and progression
+- Daily commute (shared seed), city themes (Tokyo, Seoul, Shanghai, Paris/Berlin looks and signage),
+  unlockable commuters and outfits, streaks, a rewards track that favors healthy walking.
+- Run summary and share card, local leaderboard, export/import of the save file (Safari may evict storage).
+- Juice: zombie groans and notification-sound mix, screen reactions, music that reacts to danger.
+
+### M5: Polish and balance
+- Bot-driven difficulty curve tests, accessibility pass (colour-blind safe signals, one-handed layout,
+  larger-target mode, text scaling), performance profiling on low-end Android, Lighthouse tuning.
+- Tablet layouts, landscape polish, localisation scaffold.
+
+## Decisions and open questions
+
+- **Stack:** Vite + TypeScript, Canvas 2D, no framework or runtime dependencies. A game this small is
+  lighter and faster without a UI framework; the DOM is used for menus and HUD so they stay accessible.
+- **Service worker:** hand-written and generated at build time (precache list + content hash), so there
+  is no plugin to track and previews under `/pr-preview/` are never served from the live cache.
+- **Levels** are generated from `seed` and `commute number`; a new seed is drawn every attempt.
+- **Open:** how strict the "pure steps" check should be without sensor access in the background. The
+  plan is to be honest in the UI about which mode is verified, and to make cheating cost more effort
+  than walking.

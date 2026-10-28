@@ -18,6 +18,12 @@ function fakeGeolocation() {
   return pending;
 }
 
+/** Lets awaiting code reach its next geolocation request, then answers every request so far. */
+async function answerAll(pending: Array<() => void>): Promise<void> {
+  for (let i = 0; i < 5; i++) await Promise.resolve();
+  while (pending.length > 0) pending.shift()?.();
+}
+
 function walkRecord(): WalkRecord {
   return { required: 100, pure: 0, zombie: 0, level: 1, seed: 1, score: 0, lock: null };
 }
@@ -30,7 +36,7 @@ describe('lock races', () => {
     const walk = walkRecord();
     const started = beginLock(walk, true);
     walk.lock = null;
-    pending.forEach((answer) => answer());
+    await answerAll(pending);
     expect(await started).toBe(false);
     expect(walk.lock).toBeNull();
   });
@@ -39,7 +45,7 @@ describe('lock races', () => {
     const pending = fakeGeolocation();
     const walk = walkRecord();
     const started = beginLock(walk, true);
-    pending.forEach((answer) => answer());
+    await answerAll(pending);
     expect(await started).toBe(true);
     expect(walk.lock?.fix).not.toBeNull();
   });
@@ -47,12 +53,39 @@ describe('lock races', () => {
   it('checkIn credits nothing when the lock was replaced during the final fix', async () => {
     const pending = fakeGeolocation();
     const walk = walkRecord();
-    walk.lock = { at: 0, hiddenAt: null, hiddenMs: 20 * 60_000, fix: { lat: 35, lon: 139, accuracy: 5 } };
+    walk.lock = { at: 0, hiddenAt: null, hiddenMs: 20 * 60_000, locate: true, fix: { lat: 35, lon: 139, accuracy: 5 } };
     const checking = checkIn(walk, 20 * 60_000);
     walk.lock = null;
-    pending.forEach((answer) => answer());
+    await answerAll(pending);
     const outcome = await checking;
     expect(outcome.stale).toBe(true);
     expect(walk.pure).toBe(0);
+  });
+
+  it('checkIn waits for a first fix that is still pending instead of treating it as unverified', async () => {
+    const pending = fakeGeolocation();
+    const walk = walkRecord();
+    const started = beginLock(walk, true);
+    const checking = checkIn(walk, 20 * 60_000);
+    let settled = false;
+    void checking.then(() => (settled = true));
+    await Promise.resolve();
+    expect(settled).toBe(false);
+    await answerAll(pending);
+    await started;
+    await answerAll(pending);
+    const outcome = await checking;
+    expect(outcome.locationFailed).toBe(false);
+  });
+
+  it('checkIn reports a location failure when the starting fix is missing but location was asked for', async () => {
+    const pending = fakeGeolocation();
+    const walk = walkRecord();
+    walk.lock = { at: 0, hiddenAt: null, hiddenMs: 20 * 60_000, locate: true, fix: null };
+    const checking = checkIn(walk, 20 * 60_000);
+    await answerAll(pending);
+    const outcome = await checking;
+    expect(outcome.locationFailed).toBe(true);
+    expect(outcome.credit.verified).toBe(false);
   });
 });

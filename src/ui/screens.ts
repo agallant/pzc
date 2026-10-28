@@ -270,7 +270,7 @@ export class Screens {
             ? `Your screen was off for about <b>${away} min</b>. Tap check in to bank it.`
             : 'Lock your phone, put it away, and go for a walk. Open the app again when you want to check in.'
         }</p>
-        <p class="muted">${walk.pure}/${walk.required} steps so far${lock?.fix ? ' &middot; location check on' : ''}</p>
+        <p class="muted">${walk.pure}/${walk.required} steps so far${lock?.locate ? ' &middot; location check on' : ''}</p>
         <button class="btn primary" data-action="checkin" data-autofocus>Check in</button>
         <button class="btn" data-action="cancel">Cancel this walk</button>
       </div>`,

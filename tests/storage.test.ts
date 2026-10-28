@@ -35,4 +35,14 @@ describe('parseSave', () => {
     const s = parseSave({ walk: { required: 10, lock: { at: 1, fix: { lat: 'a' } } } });
     expect(s.walk?.lock?.fix).toBeNull();
   });
+
+  it('remembers that location was asked for even without a fix, and infers it for older locks', () => {
+    const asked = parseSave({ walk: { required: 10, lock: { at: 1, locate: true, fix: null } } });
+    expect(asked.walk?.lock?.locate).toBe(true);
+    expect(asked.walk?.lock?.fix).toBeNull();
+    const older = parseSave({ walk: { required: 10, lock: { at: 1, fix: { lat: 1, lon: 2, accuracy: 5 } } } });
+    expect(older.walk?.lock?.locate).toBe(true);
+    const plain = parseSave({ walk: { required: 10, lock: { at: 1 } } });
+    expect(plain.walk?.lock?.locate).toBe(false);
+  });
 });

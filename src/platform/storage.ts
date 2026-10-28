@@ -11,6 +11,8 @@ export interface LockRecord {
   /** When the page last went to the background, if it still is. */
   hiddenAt: number | null;
   hiddenMs: number;
+  /** The player asked for location verification. Kept apart from `fix`, which is null while the first reading is pending or after it failed. */
+  locate: boolean;
   fix: Fix | null;
 }
 
@@ -77,11 +79,13 @@ function walk(raw: unknown): WalkRecord | null {
   let lock: LockRecord | null = null;
   if (typeof w.lock === 'object' && w.lock !== null) {
     const l = w.lock as Partial<LockRecord>;
+    const first = fix(l.fix);
     lock = {
       at: num(l.at, Date.now()),
       hiddenAt: l.hiddenAt === null || l.hiddenAt === undefined ? null : num(l.hiddenAt, 0),
       hiddenMs: num(l.hiddenMs, 0),
-      fix: fix(l.fix),
+      locate: l.locate === true || first !== null,
+      fix: first,
     };
   }
   return {

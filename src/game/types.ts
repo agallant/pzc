@@ -1,3 +1,5 @@
+import type { PersonaId } from './personas';
+
 export interface Rect {
   x: number;
   y: number;
@@ -5,25 +7,38 @@ export interface Rect {
   h: number;
 }
 
-export type WallKind = 'building' | 'pillar' | 'planter' | 'bench' | 'vending' | 'gate' | 'barrier' | 'train';
+export type WallKind = 'building' | 'pillar' | 'planter' | 'bench' | 'vending' | 'gate' | 'barrier' | 'train' | 'shaft';
 export interface Wall extends Rect {
   kind: WallKind;
 }
 
-export type FloorKind = 'pavement' | 'road' | 'concourse' | 'platform' | 'train';
+export type FloorKind = 'pavement' | 'road' | 'concourse' | 'platform' | 'train' | 'stairs' | 'escalator';
 export interface Zone extends Rect {
   floor: FloorKind;
 }
 
-export type DecorKind = 'crosswalk' | 'yellowLine' | 'sign' | 'gateLight' | 'doorMarker' | 'signal';
+export type DecorKind =
+  | 'crosswalk'
+  | 'yellowLine'
+  | 'sign'
+  | 'gateLight'
+  | 'doorMarker'
+  | 'signal'
+  | 'forkSign'
+  | 'floorLine'
+  | 'notice'
+  | 'lift';
 export interface Decor extends Rect {
   kind: DecorKind;
   text?: string;
+  sub?: string;
+  arrow?: 'left' | 'right';
+  chip?: string;
   /** For signals: index into Level.crossings. For gate lights: 1 = open, 0 = out of order. */
   index?: number;
 }
 
-export type ZombieKind = 'shuffler' | 'stopper' | 'streamer' | 'waiter' | 'queue';
+export type ZombieKind = 'shuffler' | 'stopper' | 'streamer' | 'waiter' | 'queue' | 'rider';
 export interface ZombieSpec {
   kind: ZombieKind;
   x: number;
@@ -51,9 +66,24 @@ export interface Crossing {
   offset: number;
 }
 
+export type SignMode = 'clear' | 'local' | 'missing';
+
+export interface LiftSpec {
+  from: Rect;
+  to: Rect;
+  working: boolean;
+}
+
 export type ThemeId = 'sakura' | 'hangang' | 'jade' | 'rhine';
 
 export interface Level {
+  persona: PersonaId;
+  /** Platform the player's train leaves from. */
+  platform: number;
+  signMode: SignMode | null;
+  lift: LiftSpec | null;
+  /** The cul-de-sac behind the wrong sign, if there is a fork. */
+  wrongWay: Rect | null;
   number: number;
   seed: number;
   theme: ThemeId;

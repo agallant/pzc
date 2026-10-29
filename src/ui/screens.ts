@@ -414,9 +414,18 @@ export class Screens {
           const pasted = this.root.querySelector<HTMLTextAreaElement>('#imp')?.value ?? '';
           const file = this.root.querySelector<HTMLInputElement>('#impfile')?.files?.[0];
           const screen = this.shown;
-          const text = file ? await file.text() : pasted;
-          // The player may have gone back or reset progress while the file was being read.
+          let text = pasted;
+          if (file) {
+            try {
+              text = await file.text();
+            } catch {
+              if (screen === this.shown) this.backup(save, updateReady, 'That file could not be read.');
+              return;
+            }
+          }
+          // The player may have gone back, reset progress or picked another file while it was being read.
           if (screen !== this.shown) return;
+          if (file && this.root.querySelector<HTMLInputElement>('#impfile')?.files?.[0] !== file) return;
           if (this.actions.importBackup(text)) return;
           this.backup(save, updateReady, 'That does not look like a Phone Zombies Commute backup.');
         },

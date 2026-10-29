@@ -1,4 +1,4 @@
-import { OUTFITS } from '../game/outfits';
+import { OUTFITS, isUnlocked } from '../game/outfits';
 import type { Fix } from '../walk/credit';
 
 export interface Settings {
@@ -137,6 +137,7 @@ function sane(raw: unknown): Save {
   const stats: Partial<Stats> = typeof r.stats === 'object' && r.stats !== null ? r.stats : {};
   const daily: Partial<Daily> = typeof r.daily === 'object' && r.daily !== null ? r.daily : {};
   const day = (v: unknown): string | null => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null);
+  const worn = OUTFITS.find((o) => o.id === r.outfit);
   return {
     v: 3,
     stats: {
@@ -153,7 +154,8 @@ function sane(raw: unknown): Save {
       scoreDay: day(daily.scoreDay),
       score: num(daily.score, 0),
     },
-    outfit: OUTFITS.find((o) => o.id === r.outfit)?.id ?? 'orange',
+    // Only a cap the walked steps have unlocked can be worn, whatever a restored backup says.
+    outfit: worn && isUnlocked(worn, num(stats.steps, 0)) ? worn.id : 'orange',
     // Saves from the first release stored the next commute as `nextLevel`.
     run: {
       level: Math.max(1, num(run.level, num(r.nextLevel, 1))),

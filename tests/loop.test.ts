@@ -59,7 +59,8 @@ describe('outfits', () => {
     expect(isUnlocked(OUTFITS[1]!, 300)).toBe(true);
     expect(outfitById('nope').id).toBe('orange');
     expect(parseSave({ outfit: 'nope' }).outfit).toBe('orange');
-    expect(parseSave({ outfit: 'teal' }).outfit).toBe('teal');
+    expect(parseSave({ outfit: 'teal', stats: { steps: 300 } }).outfit).toBe('teal');
+    expect(parseSave({ outfit: 'gold', stats: { steps: 10 } }).outfit).toBe('orange');
     for (let i = 1; i < OUTFITS.length; i++) expect(OUTFITS[i]!.steps).toBeGreaterThan(OUTFITS[i - 1]!.steps);
   });
 });

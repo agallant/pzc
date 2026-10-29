@@ -276,7 +276,8 @@ function finish(): void {
       recordDaily(save.daily, dailyKey, r.score);
       lastShare = `I made today's Phone Zombies Commute with ${r.stars} star${r.stars === 1 ? '' : 's'} and ${r.score} points. Can you?`;
       writeSave(save);
-      screens.dailyWon(level, r, save.daily.streak, save.daily.score);
+      // A day older than the last one recorded (clock set back) leaves that record alone, so show this run's score.
+      screens.dailyWon(level, r, save.daily.streak, save.daily.scoreDay === dailyKey ? save.daily.score : r.score);
       return;
     }
     save.stars[level.number] = Math.max(save.stars[level.number] ?? 0, r.stars);

@@ -63,10 +63,12 @@ two modes and let the player pick:
 - Still to do: more city looks and signage per region, a share image, a local leaderboard, music that
   reacts to danger, zombie groans.
 
-### M5: Polish and balance
-- Bot-driven difficulty curve tests, accessibility pass (colour-blind safe signals, one-handed layout,
-  larger-target mode, text scaling), performance profiling on low-end Android, Lighthouse tuning.
-- Tablet layouts, landscape polish, localisation scaffold.
+### M5: Polish and balance (first part done)
+- Done: a left-handed layout (run button on the left), a larger-controls mode, signals that carry a
+  shape as well as a colour for colour-blind players, and a camera that sits a little closer on tall screens.
+- Still to do: bot-driven difficulty curve tests (a naive steering bot wins about half of all commutes at
+  every level, so the curve is flat), text scaling, performance profiling on low-end Android, Lighthouse
+  tuning, tablet layouts, landscape polish, localisation scaffold.
 
 ## Decisions and open questions
 

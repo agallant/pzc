@@ -4,6 +4,10 @@ import type { Fix } from '../walk/credit';
 export interface Settings {
   sound: boolean;
   haptics: boolean;
+  /** Put the run button under the left thumb. */
+  leftHanded: boolean;
+  /** Bigger run button and joystick. */
+  bigControls: boolean;
 }
 
 /** A "lock the phone and walk" segment that is waiting for its check-in. */
@@ -83,7 +87,7 @@ function fresh(): Save {
     highScore: 0,
     stars: {},
     walk: null,
-    settings: { sound: true, haptics: true },
+    settings: { sound: true, haptics: true, leftHanded: false, bigControls: false },
   };
 }
 
@@ -169,6 +173,8 @@ function sane(raw: unknown): Save {
     settings: {
       sound: r.settings?.sound !== false,
       haptics: r.settings?.haptics !== false,
+      leftHanded: r.settings?.leftHanded === true,
+      bigControls: r.settings?.bigControls === true,
     },
   };
 }

@@ -136,14 +136,20 @@ export class Fx {
 
   update(dt: number): void {
     this.shake = Math.max(0, this.shake - dt * 2.5);
-    for (const t of this.texts) t.age += dt;
-    this.texts = this.texts.filter((t) => t.age < t.life);
+    let kept = 0;
+    for (const t of this.texts) {
+      t.age += dt;
+      if (t.age < t.life) this.texts[kept++] = t;
+    }
+    this.texts.length = kept;
+    kept = 0;
     for (const p of this.particles) {
       p.age += dt;
       p.x += p.vx * dt;
       p.y += p.vy * dt;
+      if (p.age < p.life) this.particles[kept++] = p;
     }
-    this.particles = this.particles.filter((p) => p.age < p.life);
+    this.particles.length = kept;
   }
 }
 
@@ -656,6 +662,28 @@ function person(
   ctx.restore();
 }
 
+const GLOW_STEPS = 12;
+let glowCtx: CanvasRenderingContext2D | null = null;
+const glowGradients: CanvasGradient[] = [];
+
+/** One phone-glow gradient per flash step, shared by every zombie instead of built per zombie per frame. */
+function glowGradient(ctx: CanvasRenderingContext2D, step: number): CanvasGradient {
+  if (glowCtx !== ctx) {
+    glowCtx = ctx;
+    glowGradients.length = 0;
+  }
+  let g = glowGradients[step];
+  if (!g) {
+    const flash = step / GLOW_STEPS;
+    const glow = 0.35 + 0.65 * flash;
+    g = ctx.createRadialGradient(ZOMBIE_R * 1.9, 0, 0, ZOMBIE_R * 1.9, 0, ZOMBIE_R * (1.4 + flash));
+    g.addColorStop(0, `rgba(120,225,255,${0.55 * glow})`);
+    g.addColorStop(1, 'rgba(120,225,255,0)');
+    glowGradients[step] = g;
+  }
+  return g;
+}
+
 function drawZombie(ctx: CanvasRenderingContext2D, z: Zombie, alpha: number, time: number): void {
   const x = z.px + (z.x - z.px) * alpha;
   const y = z.py + (z.y - z.py) * alpha;
@@ -666,13 +694,10 @@ function drawZombie(ctx: CanvasRenderingContext2D, z: Zombie, alpha: number, tim
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(z.heading);
-  const glow = 0.35 + 0.65 * z.flash;
-  const grad = ctx.createRadialGradient(ZOMBIE_R * 1.9, 0, 0, ZOMBIE_R * 1.9, 0, ZOMBIE_R * (1.4 + z.flash));
-  grad.addColorStop(0, `rgba(120,225,255,${0.55 * glow})`);
-  grad.addColorStop(1, 'rgba(120,225,255,0)');
-  ctx.fillStyle = grad;
+  const step = Math.round(Math.min(1, Math.max(0, z.flash)) * GLOW_STEPS);
+  ctx.fillStyle = glowGradient(ctx, step);
   ctx.beginPath();
-  ctx.arc(ZOMBIE_R * 1.9, 0, ZOMBIE_R * (1.4 + z.flash), 0, Math.PI * 2);
+  ctx.arc(ZOMBIE_R * 1.9, 0, ZOMBIE_R * (1.4 + step / GLOW_STEPS), 0, Math.PI * 2);
   ctx.fill();
   ctx.strokeStyle = COATS[z.skin % COATS.length] as string;
   ctx.lineWidth = ZOMBIE_R * 0.28;
@@ -774,13 +799,26 @@ function drawPlayer(ctx: CanvasRenderingContext2D, game: Game, alpha: number): v
 }
 
 /** Red edges when one more bump ends the run. */
+let dangerCtx: CanvasRenderingContext2D | null = null;
+let dangerW = 0;
+let dangerH = 0;
+let dangerGradient: CanvasGradient | null = null;
+
 function drawDanger(ctx: CanvasRenderingContext2D, w: number, h: number, time: number): void {
   const pulse = still ? 0.3 : 0.24 + 0.1 * Math.sin(time * 5);
-  const g = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.35, w / 2, h / 2, Math.hypot(w, h) / 2);
-  g.addColorStop(0, 'rgba(255,40,70,0)');
-  g.addColorStop(1, `rgba(255,40,70,${pulse})`);
-  ctx.fillStyle = g;
+  if (!dangerGradient || dangerCtx !== ctx || dangerW !== w || dangerH !== h) {
+    dangerCtx = ctx;
+    dangerW = w;
+    dangerH = h;
+    dangerGradient = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.35, w / 2, h / 2, Math.hypot(w, h) / 2);
+    dangerGradient.addColorStop(0, 'rgba(255,40,70,0)');
+    dangerGradient.addColorStop(1, 'rgb(255,40,70)');
+  }
+  const alpha = ctx.globalAlpha;
+  ctx.globalAlpha = alpha * pulse;
+  ctx.fillStyle = dangerGradient;
   ctx.fillRect(0, 0, w, h);
+  ctx.globalAlpha = alpha;
 }
 
 function drawStick(ctx: CanvasRenderingContext2D, s: StickView, dpr: number, reach: number): void {

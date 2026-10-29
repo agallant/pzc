@@ -57,6 +57,9 @@ function tipFor(level: Level): string {
   return TIPS[(level.number - 1) % TIPS.length] as string;
 }
 
+/** A real backup is a few kilobytes; refuse anything far larger before reading it into memory. */
+const MAX_BACKUP_BYTES = 512 * 1024;
+
 /** Full-screen overlays (menu, briefing, pause, results). Plain DOM, so it is accessible by default. */
 export class Screens {
   private onClick: (action: string, el: HTMLElement) => void = () => {};
@@ -155,6 +158,8 @@ export class Screens {
         <h2>Settings</h2>
         <label class="toggle"><input type="checkbox" data-setting="sound" ${s.sound ? 'checked' : ''} /> <span>Sound effects</span></label>
         <label class="toggle"><input type="checkbox" data-setting="haptics" ${s.haptics ? 'checked' : ''} /> <span>Vibration</span></label>
+        <label class="toggle"><input type="checkbox" data-setting="leftHanded" ${s.leftHanded ? 'checked' : ''} /> <span>Run button on the left</span></label>
+        <label class="toggle"><input type="checkbox" data-setting="bigControls" ${s.bigControls ? 'checked' : ''} /> <span>Larger controls</span></label>
         <button class="btn" data-action="outfit">Outfit</button>
         <button class="btn" data-action="backup">Back up or restore progress</button>
         <button class="btn danger" data-action="reset">Reset progress</button>
@@ -415,6 +420,10 @@ export class Screens {
           const file = this.root.querySelector<HTMLInputElement>('#impfile')?.files?.[0];
           const screen = this.shown;
           let text = pasted;
+          if (file && file.size > MAX_BACKUP_BYTES) {
+            this.backup(save, updateReady, 'That does not look like a Phone Zombies Commute backup.');
+            return;
+          }
           if (file) {
             try {
               text = await file.text();

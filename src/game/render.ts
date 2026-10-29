@@ -54,6 +54,7 @@ const CARS = ['#d84a4a', '#e3b341', '#4a8fd8', '#e8e8ea', '#3a3a42', '#59b36b'];
 /** Set from `Fx.reduced` at the start of each frame: when true, nothing on the canvas pulses, bobs or wobbles. */
 let still = false;
 let capColor = '#ff9f43';
+let stickScale = 1;
 
 export interface Camera {
   x: number;
@@ -95,6 +96,8 @@ export class Fx {
   reduced = false;
   /** Colour of the player's cap (the equipped outfit). */
   cap = '#ff9f43';
+  /** Mirrors Controls.stickScale so the drawn joystick matches its reach. */
+  stickScale = 1;
 
   text(x: number, y: number, text: string, color: string): void {
     this.texts.push({ x, y, text, color, age: 0, life: 1.1 });
@@ -145,7 +148,7 @@ export class Fx {
 }
 
 export function computeViewport(w: number, h: number, dpr: number): Viewport {
-  return { w, h, dpr: Math.min(dpr, 2), scale: Math.min(w / 10, h / 14) };
+  return { w, h, dpr: Math.min(dpr, 2), scale: Math.min(w / 10, h / 12) };
 }
 
 export function updateCamera(cam: Camera, game: Game, vp: Viewport, dt: number, snap: boolean): void {
@@ -176,6 +179,7 @@ export function drawGame(
   const pal = PALETTES[game.level.theme];
   still = fx.reduced;
   capColor = fx.cap;
+  stickScale = fx.stickScale;
   const { w, h, dpr, scale } = vp;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.fillStyle = '#0b141a';
@@ -243,7 +247,7 @@ export function drawGame(
   ctx.restore();
 
   if (game.player.hp === 1 && game.status === 'playing') drawDanger(ctx, w, h, time);
-  if (stick?.active) drawStick(ctx, stick, dpr);
+  if (stick?.active) drawStick(ctx, stick, dpr, STICK_MAX * stickScale);
 }
 
 function drawFloors(ctx: CanvasRenderingContext2D, game: Game, pal: Palette, x0: number, y0: number, x1: number, y1: number, time: number): void {
@@ -558,10 +562,14 @@ function drawDecor(ctx: CanvasRenderingContext2D, d: Decor, game: Game, time: nu
       ctx.beginPath();
       ctx.arc(d.x + d.w / 2, d.y + d.h / 2, d.w * 0.3, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillStyle = '#ffffff';
-      ctx.font = '800 0.45px system-ui, sans-serif';
+      // A shape as well as a colour, so the signal reads without telling red from green.
+      ctx.fillStyle = '#10202a';
+      ctx.font = '900 0.34px system-ui, sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
+      ctx.fillText(s.pedGreen ? '\u25b6' : '\u25a0', d.x + d.w / 2 + (s.pedGreen ? 0.02 : 0), d.y + d.h / 2 + 0.02);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '800 0.45px system-ui, sans-serif';
       ctx.fillText(String(Math.ceil(s.left)), d.x + d.w / 2, d.y + d.h + 0.35);
       break;
     }
@@ -775,17 +783,17 @@ function drawDanger(ctx: CanvasRenderingContext2D, w: number, h: number, time: n
   ctx.fillRect(0, 0, w, h);
 }
 
-function drawStick(ctx: CanvasRenderingContext2D, s: StickView, dpr: number): void {
+function drawStick(ctx: CanvasRenderingContext2D, s: StickView, dpr: number, reach: number): void {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.lineWidth = 3;
   ctx.strokeStyle = 'rgba(255,255,255,0.35)';
   ctx.fillStyle = 'rgba(255,255,255,0.08)';
   ctx.beginPath();
-  ctx.arc(s.ox, s.oy, STICK_MAX, 0, Math.PI * 2);
+  ctx.arc(s.ox, s.oy, reach, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
   const d = Math.hypot(s.x - s.ox, s.y - s.oy);
-  const m = Math.min(d, STICK_MAX);
+  const m = Math.min(d, reach);
   const nx = d > 0 ? (s.x - s.ox) / d : 0;
   const ny = d > 0 ? (s.y - s.oy) / d : 0;
   ctx.fillStyle = 'rgba(255,255,255,0.55)';

@@ -31,6 +31,13 @@ const controls = new Controls(canvas);
 const hud = new Hud(hudRoot);
 controls.bindSprint(hud.sprint);
 const fx = new Fx();
+function applyControlPrefs(): void {
+  hudRoot.classList.toggle('left-handed', save.settings.leftHanded);
+  hudRoot.classList.toggle('big-controls', save.settings.bigControls);
+  controls.stickScale = save.settings.bigControls ? 1.3 : 1;
+  fx.stickScale = controls.stickScale;
+}
+applyControlPrefs();
 fx.reduced = reducedMotion.matches;
 fx.cap = outfitById(save.outfit).cap;
 reducedMotion.addEventListener('change', () => (fx.reduced = reducedMotion.matches));
@@ -66,6 +73,7 @@ const screens = new Screens(
     setSetting: (key, value) => {
       save.settings[key] = value;
       if (key === 'sound') sfx.enabled = value;
+      applyControlPrefs();
       writeSave(save);
       void sfx.unlock().then(() => sfx.play('tap'));
     },
@@ -73,6 +81,7 @@ const screens = new Screens(
       save = resetSave();
       sfx.enabled = save.settings.sound;
       fx.cap = outfitById(save.outfit).cap;
+      applyControlPrefs();
       toMenu();
     },
     reload: () => location.reload(),
@@ -106,6 +115,7 @@ const screens = new Screens(
       if (!imported) return false;
       save = imported;
       sfx.enabled = save.settings.sound;
+      applyControlPrefs();
       fx.cap = outfitById(save.outfit).cap;
       writeSave(save);
       toMenu();

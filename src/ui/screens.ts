@@ -381,7 +381,7 @@ export class Screens {
     const rows = save.runs.map((r, i) => item(`${i + 1}. ${r.day ? esc(r.day) : 'Earlier'}`, r.score, r.commutes));
     if (save.run.score > 0) rows.push(item('Now', save.run.score, save.run.level - 1));
     if (rows.length === 0) return '';
-    return `<h3>Best runs</h3><ol class="runs">${rows.join('')}</ol>`;
+    return `<h3>Best runs</h3><ol class="runs" role="list">${rows.join('')}</ol>`;
   }
 
   outfits(save: Save, updateReady: boolean): void {

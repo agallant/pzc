@@ -70,6 +70,13 @@ describe('runs', () => {
     ]);
   });
 
+  it('rejects run dates that are not real calendar days', () => {
+    const dates = ['2026-02-30', '2026-13-01', '2023-02-29', '2024-02-29', '2026-12-31'];
+    const s = parseSave({ runs: dates.map((day, i) => ({ score: 100 + i, commutes: 1, day })) });
+    const kept = Object.fromEntries(s.runs.map((r) => [r.score, r.day]));
+    expect(kept).toEqual({ 100: null, 101: null, 102: null, 103: '2024-02-29', 104: '2026-12-31' });
+  });
+
   it('never holds more than five runs', () => {
     const many = Array.from({ length: 12 }, (_, i) => ({ score: i + 1, commutes: 1, day: '2026-10-29' }));
     expect(parseSave({ runs: many }).runs.map((r) => r.score)).toEqual([12, 11, 10, 9, 8]);

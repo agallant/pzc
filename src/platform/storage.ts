@@ -157,7 +157,12 @@ function sane(raw: unknown): Save {
   const run: Partial<Run> = typeof r.run === 'object' && r.run !== null ? r.run : {};
   const stats: Partial<Stats> = typeof r.stats === 'object' && r.stats !== null ? r.stats : {};
   const daily: Partial<Daily> = typeof r.daily === 'object' && r.daily !== null ? r.daily : {};
-  const day = (v: unknown): string | null => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null);
+  // A real calendar date only: 2026-02-30 matches the pattern but rolls over to March, so the round trip tells them apart.
+  const day = (v: unknown): string | null => {
+    if (typeof v !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(v)) return null;
+    const t = Date.parse(`${v}T00:00:00Z`);
+    return Number.isNaN(t) || new Date(t).toISOString().slice(0, 10) !== v ? null : v;
+  };
   const worn = OUTFITS.find((o) => o.id === r.outfit);
   return {
     v: 3,

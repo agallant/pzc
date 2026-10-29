@@ -60,6 +60,8 @@ function tipFor(level: Level): string {
 /** Full-screen overlays (menu, briefing, pause, results). Plain DOM, so it is accessible by default. */
 export class Screens {
   private onClick: (action: string, el: HTMLElement) => void = () => {};
+  /** Counts screens shown, so a slow async handler can tell the player has moved on. */
+  private shown = 0;
 
   constructor(private readonly root: HTMLElement, private readonly actions: ScreenActions, private build: string) {
     root.addEventListener('click', (e) => {
@@ -82,6 +84,7 @@ export class Screens {
   }
 
   private show(html: string, handlers: Record<string, (el: HTMLElement) => void>, dim = true): void {
+    this.shown += 1;
     this.root.innerHTML = html;
     this.root.classList.add('open');
     this.root.classList.toggle('dim', dim);
@@ -408,15 +411,27 @@ export class Screens {
         download: () => this.actions.downloadBackup(),
         shareFile: () => this.actions.shareBackup(),
         import: async () => {
-          let text = this.root.querySelector<HTMLTextAreaElement>('#imp')?.value ?? '';
+          const pasted = this.root.querySelector<HTMLTextAreaElement>('#imp')?.value ?? '';
           const file = this.root.querySelector<HTMLInputElement>('#impfile')?.files?.[0];
-          if (file) text = await file.text();
+          const screen = this.shown;
+          const text = file ? await file.text() : pasted;
+          // The player may have gone back or reset progress while the file was being read.
+          if (screen !== this.shown) return;
           if (this.actions.importBackup(text)) return;
           this.backup(save, updateReady, 'That does not look like a Phone Zombies Commute backup.');
         },
         back: () => this.settings(save, updateReady),
       },
     );
+    // Restore uses one source. Typing clears the chosen file and choosing a file clears the text.
+    const paste = this.root.querySelector<HTMLTextAreaElement>('#imp');
+    const pick = this.root.querySelector<HTMLInputElement>('#impfile');
+    paste?.addEventListener('input', () => {
+      if (pick) pick.value = '';
+    });
+    pick?.addEventListener('change', () => {
+      if (paste && pick.files?.length) paste.value = '';
+    });
   }
 
   dailyWon(level: Level, r: Result, streak: number, best: number): void {

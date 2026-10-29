@@ -1,3 +1,4 @@
+import { OUTFITS } from '../game/outfits';
 import type { Fix } from '../walk/credit';
 
 export interface Settings {
@@ -152,7 +153,7 @@ function sane(raw: unknown): Save {
       scoreDay: day(daily.scoreDay),
       score: num(daily.score, 0),
     },
-    outfit: typeof r.outfit === 'string' && r.outfit.length < 24 ? r.outfit : 'orange',
+    outfit: OUTFITS.find((o) => o.id === r.outfit)?.id ?? 'orange',
     // Saves from the first release stored the next commute as `nextLevel`.
     run: {
       level: Math.max(1, num(run.level, num(r.nextLevel, 1))),

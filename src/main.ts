@@ -72,6 +72,7 @@ const screens = new Screens(
     reset: () => {
       save = resetSave();
       sfx.enabled = save.settings.sound;
+      fx.cap = outfitById(save.outfit).cap;
       toMenu();
     },
     reload: () => location.reload(),

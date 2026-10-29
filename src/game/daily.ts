@@ -30,6 +30,8 @@ export function previousDay(key: string): string {
 
 /** Records a completed daily commute, extending the streak if yesterday was also done. */
 export function recordDaily(daily: Daily, key: string, score: number): void {
+  // A clock set back since the last completion must not overwrite the newer record.
+  if (daily.last && key < daily.last) return;
   if (daily.scoreDay !== key) {
     daily.scoreDay = key;
     daily.score = 0;

@@ -33,6 +33,15 @@ describe('daily commute', () => {
     expect(daily.score).toBe(100);
   });
 
+  it('ignores a day older than the last completed one (clock set back)', () => {
+    const daily = parseSave({}).daily;
+    recordDaily(daily, '2026-10-27', 600);
+    recordDaily(daily, '2026-10-26', 900);
+    expect(daily.last).toBe('2026-10-27');
+    expect(daily.streak).toBe(1);
+    expect(daily.score).toBe(600);
+  });
+
   it('lets a streak lapse when yesterday was missed', () => {
     const daily = parseSave({}).daily;
     recordDaily(daily, '2026-10-26', 1);
@@ -49,6 +58,8 @@ describe('outfits', () => {
     expect(isUnlocked(OUTFITS[1]!, 299)).toBe(false);
     expect(isUnlocked(OUTFITS[1]!, 300)).toBe(true);
     expect(outfitById('nope').id).toBe('orange');
+    expect(parseSave({ outfit: 'nope' }).outfit).toBe('orange');
+    expect(parseSave({ outfit: 'teal' }).outfit).toBe('teal');
     for (let i = 1; i < OUTFITS.length; i++) expect(OUTFITS[i]!.steps).toBeGreaterThan(OUTFITS[i - 1]!.steps);
   });
 });

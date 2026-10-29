@@ -110,7 +110,10 @@ describe('check-in credit', () => {
     const to = { lat: 35.009, lon: 139, accuracy: 5 };
     // About 1 km: 5 minutes hidden alone would read as 3.3 m/s, but the walk began 12 minutes ago (1.4 m/s).
     expect(checkInCredit({ awayMs: 5 * 60_000, from, to }).reason).toBe('vehicle');
-    expect(checkInCredit({ awayMs: 5 * 60_000, elapsedMs: 12 * 60_000, from, to }).reason).toBeUndefined();
+    const walked = checkInCredit({ awayMs: 5 * 60_000, elapsedMs: 12 * 60_000, from, to });
+    expect(walked.reason).toBeUndefined();
+    expect(walked.steps).toBe(500);
+    expect(walked.verified).toBe(true);
   });
 
   const here = { lat: 35.68, lon: 139.76, accuracy: 10 };

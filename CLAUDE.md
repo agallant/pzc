@@ -54,9 +54,13 @@ Never ask the user for a token or to paste credentials; the workflow holds the o
 ## How changes land
 
 - Work on a branch and open a PR into `main`. Pushing to `main` directly is blocked.
-- Non-draft PRs get auto-merge turned on as soon as they open. A PR merges by itself once every
-  required check passes, CodeRabbit approves, and all review threads are resolved. So open a PR
-  only when the work is ready to ship, or open it as a draft.
+- Right after opening a PR that's ready to ship, turn on auto-merge for it:
+  `gh api -X PUT repos/<owner>/<repo>/pulls/<number>/ccr/auto_merge -f merge_method=squash`.
+  It then merges by itself once every required check passes, CodeRabbit approves, and all review
+  threads are resolved. Turn it on this way, as the user, and never from a workflow: a merge
+  made with a workflow's token triggers no other workflows, so `main` wouldn't deploy, the PR
+  preview wouldn't be removed, and the branch wouldn't be deleted. Open unfinished work as a
+  draft without auto-merge.
 - Keep PRs small enough to review in one pass; CodeRabbit skips very large ones.
 - After opening a PR, follow it to the end: wait for the checks and CodeRabbit's review, fix
   what's failing, and handle every review comment by either fixing it or replying with the

@@ -1,11 +1,13 @@
 import './style.css';
+import { dailyLevelNumber, dailySeed, dayKey, recordDaily } from './game/daily';
 import { generateLevel } from './game/level';
+import { isUnlocked, outfitById } from './game/outfits';
 import { computeViewport, drawGame, Fx, updateCamera, type Camera, type Viewport } from './game/render';
 import { randomSeed } from './game/rng';
 import { createGame, scoreResult, step, STEP, type Game, type GameEvent } from './game/sim';
 import { Sfx } from './platform/audio';
 import { Controls } from './platform/input';
-import { loadSave, resetSave, writeSave, type Save } from './platform/storage';
+import { exportSave, importSave, loadSave, resetSave, writeSave, type Save } from './platform/storage';
 import { Hud } from './ui/hud';
 import { Screens } from './ui/screens';
 import { WalkScreen } from './ui/walkScreen';
@@ -30,6 +32,7 @@ const hud = new Hud(hudRoot);
 controls.bindSprint(hud.sprint);
 const fx = new Fx();
 fx.reduced = reducedMotion.matches;
+fx.cap = outfitById(save.outfit).cap;
 reducedMotion.addEventListener('change', () => (fx.reduced = reducedMotion.matches));
 
 let mode: Mode = 'menu';
@@ -40,6 +43,7 @@ const cam: Camera = { x: 0, y: 0 };
 let snapCamera = true;
 let updateReady = false;
 let endTimer = 0;
+let dailyKey: string | null = null;
 
 function makeDemo(): Game {
   const g = createGame(generateLevel(4, randomSeed()));
@@ -68,6 +72,7 @@ const screens = new Screens(
     reset: () => {
       save = resetSave();
       sfx.enabled = save.settings.sound;
+      fx.cap = outfitById(save.outfit).cap;
       toMenu();
     },
     reload: () => location.reload(),
@@ -83,6 +88,32 @@ const screens = new Screens(
     },
     finishWalk,
     giveUp,
+    playDaily: () => {
+      const key = dayKey();
+      dailyKey = key;
+      startCommute(dailyLevelNumber(key), dailySeed(key));
+    },
+    share: () => void shareResult(),
+    setOutfit: (id) => {
+      const o = outfitById(id);
+      if (!isUnlocked(o, save.stats.steps)) return;
+      save.outfit = o.id;
+      fx.cap = o.cap;
+      writeSave(save);
+    },
+    importBackup: (text) => {
+      const imported = importSave(text);
+      if (!imported) return false;
+      save = imported;
+      sfx.enabled = save.settings.sound;
+      fx.cap = outfitById(save.outfit).cap;
+      writeSave(save);
+      toMenu();
+      return true;
+    },
+    copyBackup: () => void navigator.clipboard?.writeText(exportSave(save)).catch(() => {}),
+    downloadBackup,
+    shareBackup: () => void shareBackup(),
   },
   `${__BUILD_LABEL__} · ${__BUILD_SHA__}`,
 );
@@ -108,6 +139,7 @@ function toMenu(): void {
 
 function startCommute(number: number, seed: number = randomSeed()): void {
   sfx.unlock();
+  if (dailyKey !== dayKey() || seed !== dailySeed(dailyKey)) dailyKey = null;
   level = generateLevel(number, seed);
   game = createGame(level);
   hud.reset();
@@ -195,10 +227,10 @@ function onEvent(e: GameEvent): void {
       hud.say('Caffeinated! Faster and fully rested', 2);
       break;
     case 'ping':
-      if (Math.hypot(e.x - game.player.x, e.y - game.player.y) < 7) sfx.play('ping');
+      if (Math.hypot(e.x - game.player.x, e.y - game.player.y) < 7) sfx.play('ping', (e.x - game.player.x) / 6);
       break;
     case 'honk':
-      sfx.play('honk');
+      sfx.play('honk', (e.x - game.player.x) / 7);
       break;
     case 'trainLeft':
       sfx.play('trainLeft');
@@ -233,21 +265,76 @@ function finish(): void {
   mode = 'over';
   controls.enabled = false;
   controls.release();
+  lastShare = '';
+  save.stats.bumps += game.hits;
+  save.stats.nearMisses += game.nearMisses;
   if (game.status === 'won') {
     const r = scoreResult(game);
+    save.stats.commutes += 1;
+    save.bestLevel = Math.max(save.bestLevel, level.number);
+    if (dailyKey) {
+      recordDaily(save.daily, dailyKey, r.score);
+      lastShare = `I made today's Phone Zombies Commute with ${r.stars} star${r.stars === 1 ? '' : 's'} and ${r.score} points. Can you?`;
+      writeSave(save);
+      // A day older than the last one recorded (clock set back) leaves that record alone, so show this run's score.
+      screens.dailyWon(level, r, save.daily.streak, save.daily.scoreDay === dailyKey ? save.daily.score : r.score);
+      return;
+    }
+    save.stars[level.number] = Math.max(save.stars[level.number] ?? 0, r.stars);
     save.run.level = level.number + 1;
     save.run.score += r.score;
     const newBest = save.run.score > save.highScore;
     save.highScore = Math.max(save.highScore, save.run.score);
-    save.bestLevel = Math.max(save.bestLevel, level.number);
-    save.stars[level.number] = Math.max(save.stars[level.number] ?? 0, r.stars);
+    lastShare = `I made Commute #${level.number} in Phone Zombies Commute with ${r.stars} star${r.stars === 1 ? '' : 's'} (run score ${save.run.score}), and I have walked ${save.stats.steps} real steps to keep my runs alive.`;
     writeSave(save);
     screens.won(level, r, newBest);
   } else {
     const score = Math.round(game.score);
+    const progress = Math.round(100 * (1 - game.player.y / level.height));
+    if (dailyKey) {
+      writeSave(save);
+      screens.dailyLost(score, progress);
+      return;
+    }
     save.walk = { required: stepsRequired(save.run.continues), pure: 0, zombie: 0, level: level.number, seed: level.seed, score, lock: null };
     writeSave(save);
-    screens.lost(level, score, Math.round(100 * (1 - game.player.y / level.height)), save.walk, save.run);
+    screens.lost(level, score, progress, save.walk, save.run);
+  }
+}
+
+let lastShare = '';
+
+async function shareResult(): Promise<void> {
+  const url = location.href.split('#')[0] ?? location.href;
+  try {
+    await navigator.share({ title: 'Phone Zombies Commute', text: lastShare, url });
+  } catch {
+    // Cancelled, or sharing is not available: nothing to do.
+  }
+}
+
+function backupFile(): File {
+  return new File([exportSave(save)], `phone-zombies-commute-${dayKey()}.json`, { type: 'application/json' });
+}
+
+function downloadBackup(): void {
+  const url = URL.createObjectURL(backupFile());
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = backupFile().name;
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+}
+
+async function shareBackup(): Promise<void> {
+  const file = backupFile();
+  try {
+    if (navigator.canShare?.({ files: [file] })) await navigator.share({ files: [file], title: 'Phone Zombies Commute backup' });
+    else await navigator.share({ title: 'Phone Zombies Commute backup', text: exportSave(save) });
+  } catch {
+    // Cancelled.
   }
 }
 
@@ -266,6 +353,8 @@ function walkLive(): void {
   // Live counting takes over from any lock-and-walk segment, including one still waiting on its first fix.
   walk.lock = null;
   let wasDone = false;
+  let countedPure = walk.pure;
+  let countedZombie = walk.zombie;
   const session = new LiveWalk(
     walk,
     (view) => {
@@ -276,7 +365,13 @@ function walkLive(): void {
         vibrate([120, 60, 120]);
       }
     },
-    () => writeSave(save),
+    () => {
+      save.stats.steps += walk.pure - countedPure;
+      save.stats.zombieSteps += walk.zombie - countedZombie;
+      countedPure = walk.pure;
+      countedZombie = walk.zombie;
+      writeSave(save);
+    },
   );
   live = session;
   mode = 'walk';
@@ -321,6 +416,7 @@ async function doCheckIn(): Promise<void> {
   const walk = save.walk;
   if (!walk || checkingIn) return;
   checkingIn = true;
+  const before = walk.pure;
   let outcome: Awaited<ReturnType<typeof checkIn>>;
   try {
     outcome = await checkIn(walk);
@@ -328,6 +424,7 @@ async function doCheckIn(): Promise<void> {
     checkingIn = false;
   }
   if (outcome.stale) return;
+  save.stats.steps += walk.pure - before;
   writeSave(save);
   if (outcome.credit.steps > 0) sfx.play(walk.pure >= walk.required ? 'win' : 'coffee');
   screens.checkInResult(walk, outcome, save.run);

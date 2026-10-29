@@ -363,6 +363,10 @@ h2 {
   font-size: 1.0625rem;
   font-weight: 700;
   text-align: left;
+  min-width: 0;
+}
+.toggle span {
+  overflow-wrap: anywhere;
 }
 .toggle input {
   width: 26px;

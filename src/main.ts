@@ -1,5 +1,6 @@
 import './style.css';
 import { dailyLevelNumber, dailySeed, dayKey, recordDaily } from './game/daily';
+import { nearestWithin } from './game/groan';
 import { generateLevel } from './game/level';
 import { isUnlocked, outfitById } from './game/outfits';
 import { computeViewport, drawGame, Fx, updateCamera, type Camera, type Viewport } from './game/render';
@@ -481,6 +482,9 @@ resize();
 
 let acc = 0;
 let last = performance.now();
+/** Seconds until the nearest zombie next groans. */
+let groanIn = 5;
+const GROAN_RANGE = 6;
 function frame(now: number): void {
   if (mode === 'walk') {
     last = now;
@@ -500,6 +504,14 @@ function frame(now: number): void {
       game.events.length = 0;
     }
     hud.update(game, dt);
+    if (game.status === 'playing') {
+      groanIn -= dt;
+      if (groanIn <= 0) {
+        const z = nearestWithin(game.zombies, game.player.x, game.player.y, GROAN_RANGE);
+        if (z) sfx.play('groan', Math.max(-1, Math.min(1, (z.x - game.player.x) / GROAN_RANGE)));
+        groanIn = z ? 4 + Math.random() * 5 : 1;
+      }
+    }
     if (game.status !== 'playing') {
       endTimer -= dt;
       if (endTimer <= 0) finish();

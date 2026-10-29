@@ -367,10 +367,21 @@ export class Screens {
           ${row('Best daily streak', save.daily.bestStreak)}
           ${row('Outfits unlocked', `${unlocked} / ${OUTFITS.length}`)}
         </dl>
+        ${this.runsList(save)}
         <button class="btn primary" data-action="back" data-autofocus>Back</button>
       </div>`,
       { back: () => this.menu(save, updateReady) },
     );
+  }
+
+  /** The best finished runs on this device, plus the run in progress. */
+  private runsList(save: Save): string {
+    const item = (label: string, score: number, commutes: number): string =>
+      `<li><span>${label}<small class="muted">${commutes} commute${commutes === 1 ? '' : 's'}</small></span><b>${score}</b></li>`;
+    const rows = save.runs.map((r, i) => item(`${i + 1}. ${r.day ? esc(r.day) : 'Earlier'}`, r.score, r.commutes));
+    if (save.run.score > 0) rows.push(item('Now', save.run.score, save.run.level - 1));
+    if (rows.length === 0) return '';
+    return `<h3>Best runs</h3><ol class="runs" role="list">${rows.join('')}</ol>`;
   }
 
   outfits(save: Save, updateReady: boolean): void {

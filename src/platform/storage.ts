@@ -1,3 +1,4 @@
+import { topRuns, type RunRecord } from '../game/leaderboard';
 import { OUTFITS, isUnlocked } from '../game/outfits';
 import type { Fix } from '../walk/credit';
 
@@ -71,6 +72,8 @@ export interface Save {
   run: Run;
   bestLevel: number;
   highScore: number;
+  /** The best finished runs, highest score first. */
+  runs: RunRecord[];
   stars: Record<number, number>;
   walk: WalkRecord | null;
   settings: Settings;
@@ -87,6 +90,7 @@ function fresh(): Save {
     run: { level: 1, score: 0, continues: 0 },
     bestLevel: 0,
     highScore: 0,
+    runs: [],
     stars: {},
     walk: null,
     settings: { sound: true, haptics: true, leftHanded: false, bigControls: false, largeText: false },
@@ -131,6 +135,17 @@ function walk(raw: unknown): WalkRecord | null {
   };
 }
 
+function runs(raw: unknown, day: (v: unknown) => string | null): RunRecord[] {
+  if (!Array.isArray(raw)) return [];
+  const list: RunRecord[] = [];
+  for (const item of raw) {
+    if (typeof item !== 'object' || item === null) continue;
+    const o = item as Partial<RunRecord>;
+    list.push({ score: num(o.score, 0), commutes: num(o.commutes, 0), day: day(o.day) });
+  }
+  return topRuns(list);
+}
+
 function sane(raw: unknown): Save {
   const base = fresh();
   if (typeof raw !== 'object' || raw === null) return base;
@@ -142,7 +157,12 @@ function sane(raw: unknown): Save {
   const run: Partial<Run> = typeof r.run === 'object' && r.run !== null ? r.run : {};
   const stats: Partial<Stats> = typeof r.stats === 'object' && r.stats !== null ? r.stats : {};
   const daily: Partial<Daily> = typeof r.daily === 'object' && r.daily !== null ? r.daily : {};
-  const day = (v: unknown): string | null => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null);
+  // A real calendar date only: 2026-02-30 matches the pattern but rolls over to March, so the round trip tells them apart.
+  const day = (v: unknown): string | null => {
+    if (typeof v !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(v)) return null;
+    const t = Date.parse(`${v}T00:00:00Z`);
+    return Number.isNaN(t) || new Date(t).toISOString().slice(0, 10) !== v ? null : v;
+  };
   const worn = OUTFITS.find((o) => o.id === r.outfit);
   return {
     v: 3,
@@ -170,6 +190,7 @@ function sane(raw: unknown): Save {
     },
     bestLevel: num(r.bestLevel, 0),
     highScore: num(r.highScore, 0),
+    runs: runs(r.runs, day),
     stars,
     walk: walk(r.walk),
     settings: {

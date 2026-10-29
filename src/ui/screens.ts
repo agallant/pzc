@@ -154,16 +154,20 @@ export class Screens {
   settings(save: Save, updateReady: boolean): void {
     const s = save.settings;
     this.show(
-      `<div class="card">
+      `<div class="card wide">
         <h2>Settings</h2>
-        <label class="toggle"><input type="checkbox" data-setting="sound" ${s.sound ? 'checked' : ''} /> <span>Sound effects</span></label>
-        <label class="toggle"><input type="checkbox" data-setting="haptics" ${s.haptics ? 'checked' : ''} /> <span>Vibration</span></label>
-        <label class="toggle"><input type="checkbox" data-setting="leftHanded" ${s.leftHanded ? 'checked' : ''} /> <span>Run button on the left</span></label>
-        <label class="toggle"><input type="checkbox" data-setting="bigControls" ${s.bigControls ? 'checked' : ''} /> <span>Larger controls</span></label>
-        <label class="toggle"><input type="checkbox" data-setting="largeText" ${s.largeText ? 'checked' : ''} /> <span>Larger text</span></label>
-        <button class="btn" data-action="outfit">Outfit</button>
-        <button class="btn" data-action="backup">Back up or restore progress</button>
-        <button class="btn danger" data-action="reset">Reset progress</button>
+        <div class="toggles">
+          <label class="toggle"><input type="checkbox" data-setting="sound" ${s.sound ? 'checked' : ''} /> <span>Sound effects</span></label>
+          <label class="toggle"><input type="checkbox" data-setting="haptics" ${s.haptics ? 'checked' : ''} /> <span>Vibration</span></label>
+          <label class="toggle"><input type="checkbox" data-setting="leftHanded" ${s.leftHanded ? 'checked' : ''} /> <span>Run button on the left</span></label>
+          <label class="toggle"><input type="checkbox" data-setting="bigControls" ${s.bigControls ? 'checked' : ''} /> <span>Larger controls</span></label>
+          <label class="toggle"><input type="checkbox" data-setting="largeText" ${s.largeText ? 'checked' : ''} /> <span>Larger text</span></label>
+        </div>
+        <div class="actions">
+          <button class="btn" data-action="outfit">Outfit</button>
+          <button class="btn" data-action="backup">Back up or restore progress</button>
+          <button class="btn danger" data-action="reset">Reset progress</button>
+        </div>
         <p class="muted build">Build ${esc(this.build)}</p>
         <button class="btn primary" data-action="back" data-autofocus>Back</button>
       </div>`,

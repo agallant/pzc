@@ -65,7 +65,7 @@ two modes and let the player pick:
 
 ### M5: Polish and balance (first part done)
 - Done: a left-handed layout (run button on the left), a larger-controls mode, signals that carry a
-  shape as well as a colour for colour-blind players, and a camera zoom that scales with screen height.
+  shape as well as a colour for colour-blind players, and a camera that sits a little closer on tall screens.
 - Still to do: bot-driven difficulty curve tests (a naive steering bot wins about half of all commutes at
   every level, so the curve is flat), text scaling, performance profiling on low-end Android, Lighthouse
   tuning, tablet layouts, landscape polish, localisation scaffold.

@@ -340,6 +340,18 @@ h2 {
   transform: translateY(1px);
 }
 
+.toggles {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
 .toggle {
   display: flex;
   align-items: center;
@@ -351,6 +363,10 @@ h2 {
   font-size: 1.0625rem;
   font-weight: 700;
   text-align: left;
+  min-width: 0;
+}
+.toggle span {
+  overflow-wrap: anywhere;
 }
 .toggle input {
   width: 26px;
@@ -402,6 +418,10 @@ h2 {
 }
 
 @media (max-height: 460px) {
+  .screen {
+    padding-top: calc(var(--safe-top) + 8px);
+    padding-bottom: calc(var(--safe-bottom) + 8px);
+  }
   .card {
     padding: 16px;
     gap: 8px;
@@ -412,6 +432,25 @@ h2 {
   .sprint {
     width: 72px;
     height: 72px;
+  }
+}
+
+@media (max-height: 460px) and (min-width: 560px) {
+  .card.wide {
+    width: min(100%, 640px);
+  }
+  .card.wide .toggles {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .card.wide .actions {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .card.wide .actions > * {
+    flex: 1;
   }
 }
 

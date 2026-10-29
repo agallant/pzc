@@ -563,6 +563,41 @@ h2 {
   font-weight: 800;
   font-variant-numeric: tabular-nums;
 }
+.card h3 {
+  margin: 4px 0 0;
+  font-size: 1rem;
+  color: var(--muted);
+}
+.runs {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+}
+.runs li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--panel-2);
+  font-variant-numeric: tabular-nums;
+}
+.runs li span {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.runs li small {
+  font-size: 0.8125rem;
+}
+.runs li b {
+  font-weight: 800;
+}
 .outfits {
   display: flex;
   flex-direction: column;

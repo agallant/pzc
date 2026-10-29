@@ -47,6 +47,35 @@ describe('parseSave', () => {
   });
 });
 
+describe('runs', () => {
+  it('starts with no finished runs', () => {
+    expect(parseSave({}).runs).toEqual([]);
+    expect(parseSave({ runs: 'no' }).runs).toEqual([]);
+  });
+
+  it('keeps well-formed runs, best first, and drops junk', () => {
+    const s = parseSave({
+      runs: [
+        { score: 200, commutes: 2, day: '2026-10-01' },
+        'junk',
+        null,
+        { score: 900, commutes: 6, day: 'not a date' },
+        { score: 0, commutes: 9, day: '2026-10-02' },
+        { score: -5, commutes: 1, day: '2026-10-03' },
+      ],
+    });
+    expect(s.runs).toEqual([
+      { score: 900, commutes: 6, day: null },
+      { score: 200, commutes: 2, day: '2026-10-01' },
+    ]);
+  });
+
+  it('never holds more than five runs', () => {
+    const many = Array.from({ length: 12 }, (_, i) => ({ score: i + 1, commutes: 1, day: '2026-10-29' }));
+    expect(parseSave({ runs: many }).runs.map((r) => r.score)).toEqual([12, 11, 10, 9, 8]);
+  });
+});
+
 describe('settings', () => {
   it('defaults the control preferences and keeps them when set', () => {
     expect(parseSave({}).settings).toEqual({ sound: true, haptics: true, leftHanded: false, bigControls: false, largeText: false });

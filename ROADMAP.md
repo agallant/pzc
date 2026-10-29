@@ -60,8 +60,9 @@ two modes and let the player pick:
 - Done: daily commute (same seed for everyone on a date, with a streak), lifetime stats, caps unlocked by
   walking, backup/restore of the save (copy, file, share), share text, red danger vignette at one heart,
   positional notification and horn sounds, and a zombie groan every few seconds from the nearest zombie within
-  six tiles (panned to where it is; covered by the sound setting).
-- Still to do: more city looks and signage per region, a share image, a local leaderboard, music that
+  six tiles (panned to where it is; covered by the sound setting). A local top-five list of finished runs (score, commutes made, date)
+  on the Stats screen, recorded when a run is given up and banked.
+- Still to do: more city looks and signage per region, a share image, music that
   reacts to danger.
 
 ### M5: Polish and balance (second part started)

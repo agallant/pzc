@@ -1,6 +1,7 @@
 import './style.css';
 import { dailyLevelNumber, dailySeed, dayKey, recordDaily } from './game/daily';
 import { nearestWithin } from './game/groan';
+import { recordRun } from './game/leaderboard';
 import { generateLevel } from './game/level';
 import { isUnlocked, outfitById } from './game/outfits';
 import { computeViewport, drawGame, Fx, updateCamera, type Camera, type Viewport } from './game/render';
@@ -462,6 +463,7 @@ function giveUp(): void {
   live = null;
   save.run.score += save.walk?.score ?? 0;
   save.highScore = Math.max(save.highScore, save.run.score);
+  save.runs = recordRun(save.runs, { score: save.run.score, commutes: save.run.level - 1, day: dayKey() });
   save.run = { level: 1, score: 0, continues: 0 };
   save.walk = null;
   writeSave(save);

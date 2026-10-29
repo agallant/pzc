@@ -64,7 +64,7 @@ two modes and let the player pick:
   reacts to danger, zombie groans.
 
 ### M5: Polish and balance (second part started)
-- Done: a left-handed layout (run button on the left), a larger-controls mode, signals that carry a
+- Done: a left-handed layout (run button on the left), a larger-controls mode, a larger-text setting, signals that carry a
   shape as well as a colour for colour-blind players, and a camera that sits a little closer on tall screens.
 - Done: a steering bot (`tests/bot.ts`) that follows the route, dodges zombies and waits for the green man,
   and a regression test that keeps the shape of the difficulty curve. The slow full measurement is opt-in:
@@ -74,8 +74,9 @@ two modes and let the player pick:
   so the curve does slope, with noise from only 16 seeds a level. The bot reads exact zombie and
   signal state and has not been compared with a person, so these rates say nothing yet about how
   often people win. Real playtesting is needed to decide how steep the curve should be.
-- Still to do: text scaling, performance profiling on low-end Android, Lighthouse tuning, tablet layouts,
-  landscape polish, localisation scaffold.
+- Still to do: performance profiling on low-end Android, Lighthouse tuning, tablet layouts,
+  landscape polish, localisation scaffold. Bot follow-up: its red-light heading reflection is not scored
+  against zombies and walls (`tests/bot.ts`), which can slightly skew the measurement.
 
 ## Decisions and open questions
 

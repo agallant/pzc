@@ -2,8 +2,8 @@
 
 A comic arcade game for phones and tablets. Cross a busy, high-functioning city to catch your train
 while everyone around you walks head-down, poking at a phone. Bump into a phone zombie and you lose
-a heart. Lose them all and the commute is over. The plan is that you can only continue by taking a real
-walk with your phone in your pocket; that is not in yet, see [ROADMAP.md](ROADMAP.md).
+a heart. Lose them all and the commute is over. You can only continue by taking a real walk with
+your phone in your pocket (see "Walking to continue" below and [ROADMAP.md](ROADMAP.md)).
 
 **Play it:** https://agallant.github.io/pzc/
 
@@ -28,6 +28,12 @@ npm run preview    # serve the production build
 ```
 
 Node 24 (see `.nvmrc`). Set `BASE_PATH=/pzc/` when building to mimic the GitHub Pages path.
+
+**Walking to continue.** When you run out of hearts, pick "Walk with the screen on" (pocket the phone;
+steps are counted live from the motion sensors, and looking at the phone or touching it makes them
+"zombie steps") or "Lock my phone and walk" (check in when you are back; the time the screen was off is
+credited, with full credit if you allow a location check). Browsers cannot read a pedometer or run in
+the background, so this is as strict as a web app can be. Nothing leaves the device.
 
 Controls: drag anywhere to walk, hold **RUN** to hurry (it tires you out). On a keyboard, use
 WASD or the arrow keys, and Shift or Space to run.

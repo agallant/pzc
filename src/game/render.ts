@@ -53,6 +53,7 @@ const CARS = ['#d84a4a', '#e3b341', '#4a8fd8', '#e8e8ea', '#3a3a42', '#59b36b'];
 
 /** Set from `Fx.reduced` at the start of each frame: when true, nothing on the canvas pulses, bobs or wobbles. */
 let still = false;
+let capColor = '#ff9f43';
 
 export interface Camera {
   x: number;
@@ -92,6 +93,8 @@ export class Fx {
   particles: Particle[] = [];
   shake = 0;
   reduced = false;
+  /** Colour of the player's cap (the equipped outfit). */
+  cap = '#ff9f43';
 
   text(x: number, y: number, text: string, color: string): void {
     this.texts.push({ x, y, text, color, age: 0, life: 1.1 });
@@ -172,6 +175,7 @@ export function drawGame(
 ): void {
   const pal = PALETTES[game.level.theme];
   still = fx.reduced;
+  capColor = fx.cap;
   const { w, h, dpr, scale } = vp;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.fillStyle = '#0b141a';
@@ -238,6 +242,7 @@ export function drawGame(
   ctx.globalAlpha = 1;
   ctx.restore();
 
+  if (game.player.hp === 1 && game.status === 'playing') drawDanger(ctx, w, h, time);
   if (stick?.active) drawStick(ctx, stick, dpr);
 }
 
@@ -742,12 +747,15 @@ function drawPlayer(ctx: CanvasRenderingContext2D, game: Game, alpha: number): v
     ctx.fillStyle = '#7d8996';
     ctx.fillRect(-r * 1.2, -r * 0.6, r * 0.5, r * 1.2);
   }
-  if (id !== 'wheelchair') {
-    ctx.fillStyle = '#2b2f3a'; // hair, because the player is the one looking up
-    ctx.beginPath();
-    ctx.arc(-r * 0.05, 0, r * 0.62, Math.PI * 0.5, Math.PI * 1.5);
-    ctx.fill();
-  }
+  ctx.fillStyle = '#2b2f3a'; // hair, because the player is the one looking up
+  ctx.beginPath();
+  ctx.arc(-r * 0.05, 0, r * 0.62, Math.PI * 0.5, Math.PI * 1.5);
+  ctx.fill();
+  ctx.fillStyle = capColor; // the equipped cap, earned by walking
+  ctx.beginPath();
+  ctx.arc(-r * 0.02, 0, r * 0.66, Math.PI * 0.38, Math.PI * 1.62);
+  ctx.fill();
+  ctx.fillRect(r * 0.3, -r * 0.34, r * 0.32, r * 0.68);
   ctx.fillStyle = '#ffffff';
   ctx.beginPath();
   ctx.arc(r * 0.45, -r * 0.22, r * 0.11, 0, Math.PI * 2);
@@ -755,6 +763,16 @@ function drawPlayer(ctx: CanvasRenderingContext2D, game: Game, alpha: number): v
   ctx.fill();
   ctx.restore();
   ctx.globalAlpha = 1;
+}
+
+/** Red edges when one more bump ends the run. */
+function drawDanger(ctx: CanvasRenderingContext2D, w: number, h: number, time: number): void {
+  const pulse = still ? 0.3 : 0.24 + 0.1 * Math.sin(time * 5);
+  const g = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.35, w / 2, h / 2, Math.hypot(w, h) / 2);
+  g.addColorStop(0, 'rgba(255,40,70,0)');
+  g.addColorStop(1, `rgba(255,40,70,${pulse})`);
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, w, h);
 }
 
 function drawStick(ctx: CanvasRenderingContext2D, s: StickView, dpr: number): void {

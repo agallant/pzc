@@ -495,3 +495,80 @@ h2 {
   font-size: 15px;
   line-height: 1.35;
 }
+
+.stats {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+}
+.stat {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--panel-2);
+}
+.stat dt {
+  color: var(--muted);
+  font-size: 15px;
+}
+.stat dd {
+  margin: 0;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.outfits {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.btn.outfit {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  text-align: left;
+  font-size: 16px;
+}
+.btn.outfit small {
+  display: block;
+  font-weight: 600;
+  color: var(--muted);
+  font-size: 13px;
+}
+.btn.outfit.on {
+  outline: 3px solid var(--green);
+}
+.btn.outfit:disabled {
+  opacity: 0.6;
+}
+.swatch {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.6);
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+  font-size: 14px;
+  color: var(--muted);
+}
+.field textarea,
+.field input[type='file'] {
+  width: 100%;
+  border-radius: 10px;
+  border: 2px solid var(--panel-2);
+  background: #0f1c24;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  padding: 8px;
+  -webkit-user-select: text;
+  user-select: text;
+}

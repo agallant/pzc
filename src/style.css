@@ -422,6 +422,16 @@ h2 {
     padding: 16px;
     gap: 8px;
   }
+  h1 {
+    font-size: 1.75rem;
+  }
+  .sprint {
+    width: 72px;
+    height: 72px;
+  }
+}
+
+@media (max-height: 460px) and (min-width: 560px) {
   .card.wide {
     width: min(100%, 640px);
   }
@@ -432,17 +442,11 @@ h2 {
   }
   .card.wide .actions {
     flex-direction: row;
+    flex-wrap: wrap;
     gap: 8px;
   }
   .card.wide .actions > * {
     flex: 1;
-  }
-  h1 {
-    font-size: 1.75rem;
-  }
-  .sprint {
-    width: 72px;
-    height: 72px;
   }
 }
 

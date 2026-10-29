@@ -59,9 +59,10 @@ two modes and let the player pick:
 ### M4: Addictive loop and progression (first part done)
 - Done: daily commute (same seed for everyone on a date, with a streak), lifetime stats, caps unlocked by
   walking, backup/restore of the save (copy, file, share), share text, red danger vignette at one heart,
-  positional notification and horn sounds.
+  positional notification and horn sounds, and a zombie groan every few seconds from the nearest zombie within
+  six tiles (panned to where it is; covered by the sound setting).
 - Still to do: more city looks and signage per region, a share image, a local leaderboard, music that
-  reacts to danger, zombie groans.
+  reacts to danger.
 
 ### M5: Polish and balance (second part started)
 - Done: a left-handed layout (run button on the left), a larger-controls mode, a larger-text setting, signals that carry a
@@ -75,7 +76,7 @@ two modes and let the player pick:
   signal state and has not been compared with a person, so these rates say nothing yet about how
   often people win. Real playtesting is needed to decide how steep the curve should be.
 - Still to do: performance profiling on a real low-end Android phone, Lighthouse tuning, localisation scaffold.
-  First pass done without a device: per-frame allocations in the renderer removed (one shared phone-glow
+  First pass done without a device: some per-frame allocations in the renderer removed (one shared phone-glow
   gradient per flash step, one cached danger vignette, in-place cleanup of particles and floating text).
   In headless Chromium, drawing 40 zombie glows went from about 0.9 ms to 0.2 ms a frame; that is software
   rendering, so treat it as direction only.

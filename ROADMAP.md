@@ -74,7 +74,11 @@ two modes and let the player pick:
   so the curve does slope, with noise from only 16 seeds a level. The bot reads exact zombie and
   signal state and has not been compared with a person, so these rates say nothing yet about how
   often people win. Real playtesting is needed to decide how steep the curve should be.
-- Still to do: performance profiling on low-end Android, Lighthouse tuning, localisation scaffold.
+- Still to do: performance profiling on a real low-end Android phone, Lighthouse tuning, localisation scaffold.
+  First pass done without a device: per-frame allocations in the renderer removed (one shared phone-glow
+  gradient per flash step, one cached danger vignette, in-place cleanup of particles and floating text).
+  In headless Chromium, drawing 40 zombie glows went from about 0.9 ms to 0.2 ms a frame; that is software
+  rendering, so treat it as direction only.
   Checked in a headless browser at 1024x768, 768x1024 and 667x375: menus and the game fit, and Settings
   now uses two columns on short landscape screens. Still to check on real tablets and phones. Bot follow-up: its red-light heading reflection is not scored
   against zombies and walls (`tests/bot.ts`), which can slightly skew the measurement.

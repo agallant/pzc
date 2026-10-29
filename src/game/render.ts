@@ -36,6 +36,14 @@ const PALETTES: Record<ThemeId, Palette> = {
     pave: '#b7ad9f', paveLine: '#a49a8c', road: '#383a3c', building: '#5d4a3f', buildingLit: '#ffe0a0',
     concourse: '#d9d4c9', concourseAlt: '#cbc5b9', platform: '#c3c0b8', train: '#e2e4e2', accent: '#2f8f5b',
   },
+  fjord: {
+    pave: '#c2cad0', paveLine: '#aeb8bf', road: '#33383d', building: '#3f5566', buildingLit: '#ffe7a3',
+    concourse: '#dde3e6', concourseAlt: '#cfd7db', platform: '#c9d3da', train: '#e3e8ec', accent: '#e2a912',
+  },
+  canal: {
+    pave: '#c4b6a6', paveLine: '#b2a393', road: '#3b3836', building: '#7a4636', buildingLit: '#ffd27a',
+    concourse: '#e0d6c8', concourseAlt: '#d3c8b9', platform: '#c8c2b8', train: '#e6e0cc', accent: '#ee6a1f',
+  },
 };
 
 const OVERLAY = new Set(['sign', 'forkSign', 'notice', 'doorMarker']);

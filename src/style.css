@@ -587,12 +587,12 @@ h2 {
   background: var(--panel-2);
   font-variant-numeric: tabular-nums;
 }
-.runs li span {
-  display: flex;
-  flex-direction: column;
+.runs li > span {
+  display: block;
   min-width: 0;
 }
 .runs li small {
+  display: block;
   font-size: 0.8125rem;
 }
 .runs li b {

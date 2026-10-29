@@ -46,11 +46,13 @@ export async function checkIn(walk: WalkRecord, now = Date.now()): Promise<Check
   const lock = walk.lock;
   if (!lock) return { credit: { steps: 0, verified: false, reason: 'too short' }, locationFailed: false };
   noteVisibility(lock, false, now);
+  const stale: CheckInOutcome = { credit: { steps: 0, verified: false, reason: 'too short' }, locationFailed: false, stale: true };
   await firstFix.get(lock);
+  if (walk.lock !== lock) return stale;
   const wantsLocation = lock.locate;
   const to = wantsLocation ? await getFix() : null;
-  if (walk.lock !== lock) return { credit: { steps: 0, verified: false, reason: 'too short' }, locationFailed: false, stale: true };
-  const credit = checkInCredit({ awayMs: lock.hiddenMs, from: lock.fix, to });
+  if (walk.lock !== lock) return stale;
+  const credit = checkInCredit({ awayMs: lock.hiddenMs, elapsedMs: now - lock.at, from: lock.fix, to });
   walk.pure = Math.min(walk.required, walk.pure + credit.steps);
   walk.lock = null;
   return { credit, locationFailed: wantsLocation && (!lock.fix || !to) };

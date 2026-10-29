@@ -105,6 +105,14 @@ describe('PostureTracker', () => {
 });
 
 describe('check-in credit', () => {
+  it('judges speed over the whole time since the lock began, not only the time hidden', () => {
+    const from = { lat: 35, lon: 139, accuracy: 5 };
+    const to = { lat: 35.009, lon: 139, accuracy: 5 };
+    // About 1 km: 5 minutes hidden alone would read as 3.3 m/s, but the walk began 12 minutes ago (1.4 m/s).
+    expect(checkInCredit({ awayMs: 5 * 60_000, from, to }).reason).toBe('vehicle');
+    expect(checkInCredit({ awayMs: 5 * 60_000, elapsedMs: 12 * 60_000, from, to }).reason).toBeUndefined();
+  });
+
   const here = { lat: 35.68, lon: 139.76, accuracy: 10 };
 
   it('credits nothing for a very short absence', () => {

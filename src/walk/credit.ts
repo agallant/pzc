@@ -8,7 +8,10 @@ export interface Fix {
 }
 
 export interface CreditInput {
+  /** Time the screen was away. Sets the credit, capped. */
   awayMs: number;
+  /** Time since the lock began, for the speed check. At least `awayMs`; defaults to it. */
+  elapsedMs?: number;
   from?: Fix | null;
   to?: Fix | null;
   /** Steps per minute. */
@@ -43,15 +46,15 @@ export function haversine(a: Fix, b: Fix): number {
  * show real, walking-speed distance lift the discount; a loop that ends where it began cannot be
  * told from a phone left behind, so it keeps the discount.
  */
-export function checkInCredit({ awayMs, from, to, cadence = 100, stride = 0.74 }: CreditInput): Credit {
+export function checkInCredit({ awayMs, elapsedMs = awayMs, from, to, cadence = 100, stride = 0.74 }: CreditInput): Credit {
   const seconds = Math.min(awayMs / 1000, MAX_AWAY_SECONDS);
   if (seconds < MIN_AWAY_SECONDS) return { steps: 0, verified: false, reason: 'too short' };
   const full = (seconds / 60) * cadence;
   const honour = Math.floor(full * HONOUR_RATE);
   if (!from || !to) return { steps: honour, verified: false };
   const meters = Math.max(0, haversine(from, to) - from.accuracy - to.accuracy);
-  // Speed uses the real elapsed time; only the credit is capped.
-  const speed = meters / (awayMs / 1000);
+  // Speed uses the whole time since the lock began, not just the time hidden; only the credit is capped.
+  const speed = meters / (Math.max(awayMs, elapsedMs) / 1000);
   if (speed > MAX_WALK_SPEED) return { steps: 0, verified: false, reason: 'vehicle', meters };
   const gps = meters / stride;
   if (gps >= honour) return { steps: Math.floor(Math.min(full, gps)), verified: true, meters };

@@ -71,7 +71,9 @@ describe('lock races', () => {
     void checking.then(() => (settled = true));
     await Promise.resolve();
     expect(settled).toBe(false);
-    await answerAll(pending);
+    // Only the first fix is in flight; the final one is requested once it has settled.
+    expect(pending).toHaveLength(1);
+    pending.shift()?.();
     await started;
     await answerAll(pending);
     const outcome = await checking;
@@ -87,5 +89,19 @@ describe('lock races', () => {
     const outcome = await checking;
     expect(outcome.locationFailed).toBe(true);
     expect(outcome.credit.verified).toBe(false);
+  });
+
+  it('checkIn does not ask for a final fix when the lock was cancelled while the first was pending', async () => {
+    const pending = fakeGeolocation();
+    const walk = walkRecord();
+    const started = beginLock(walk, true);
+    const checking = checkIn(walk, 20 * 60_000);
+    walk.lock = null;
+    pending.shift()?.();
+    await started;
+    for (let i = 0; i < 5; i++) await Promise.resolve();
+    expect(pending).toHaveLength(0);
+    const outcome = await checking;
+    expect(outcome.stale).toBe(true);
   });
 });

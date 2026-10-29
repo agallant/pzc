@@ -15,7 +15,7 @@ describe('parseSave', () => {
     expect(s.run.level).toBe(4);
     expect(s.highScore).toBe(900);
     expect(s.stars).toEqual({ 1: 3 });
-    expect(s.settings).toEqual({ sound: false, haptics: true, leftHanded: false, bigControls: false });
+    expect(s.settings).toEqual({ sound: false, haptics: true, leftHanded: false, bigControls: false, largeText: false });
   });
 
   it('keeps a pending walk and clamps its progress', () => {
@@ -49,8 +49,9 @@ describe('parseSave', () => {
 
 describe('settings', () => {
   it('defaults the control preferences and keeps them when set', () => {
-    expect(parseSave({}).settings).toEqual({ sound: true, haptics: true, leftHanded: false, bigControls: false });
+    expect(parseSave({}).settings).toEqual({ sound: true, haptics: true, leftHanded: false, bigControls: false, largeText: false });
     const s = parseSave({ settings: { leftHanded: true, bigControls: true, sound: false } });
-    expect(s.settings).toEqual({ sound: false, haptics: true, leftHanded: true, bigControls: true });
+    expect(s.settings).toEqual({ sound: false, haptics: true, leftHanded: true, bigControls: true, largeText: false });
+    expect(parseSave({ settings: { largeText: true } }).settings.largeText).toBe(true);
   });
 });

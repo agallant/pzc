@@ -34,6 +34,7 @@ const fx = new Fx();
 function applyControlPrefs(): void {
   hudRoot.classList.toggle('left-handed', save.settings.leftHanded);
   hudRoot.classList.toggle('big-controls', save.settings.bigControls);
+  document.documentElement.classList.toggle('large-text', save.settings.largeText);
   controls.stickScale = save.settings.bigControls ? 1.3 : 1;
   fx.stickScale = controls.stickScale;
 }

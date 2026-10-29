@@ -1,5 +1,5 @@
 import { circleRectPush } from '../src/game/geometry';
-import { generateLevel } from '../src/game/level';
+import { BELT_SPEED, generateLevel } from '../src/game/level';
 import { createGame, signalState, step, STEP, ZOMBIE_R, type Game, type Input, type Zombie } from '../src/game/sim';
 import { PERSONAS } from '../src/game/personas';
 import type { Rect, Wall } from '../src/game/types';
@@ -41,6 +41,8 @@ interface Memory {
   checkX: number;
   checkY: number;
   squeezeUntil: number;
+  /** Waiting at a red light on purpose, which is not being stuck. */
+  holding: boolean;
 }
 
 interface Grid {
@@ -69,7 +71,11 @@ function wallsAt(grid: Grid, x: number, y: number): Wall[] {
 /** Where a zombie will be in `t` seconds, as far as a player can tell. */
 function zombieAt(z: Zombie, t: number): { x: number; y: number } {
   if (z.kind === 'queue') return { x: z.x, y: z.y };
-  if (z.kind === 'rider') return { x: z.x, y: z.y - 1.6 * t };
+  if (z.kind === 'rider') {
+    // The belt carries them up and round, as the simulator does.
+    const y = z.y - BELT_SPEED * t;
+    return { x: z.x, y: y < z.lane.y - 0.5 ? y + z.lane.h + 1.0 : y };
+  }
   if (z.kind === 'waiter' && z.state === 'wait') return { x: z.x, y: z.y };
   if (z.state === 'stop' || z.state === 'stand' || z.state === 'ping') return { x: z.x, y: z.y };
   return { x: z.x + Math.cos(z.heading) * z.speed * t, y: z.y + Math.sin(z.heading) * z.speed * t };
@@ -91,7 +97,7 @@ export function playBot(number: number, seed: number, skill: BotSkill): Outcome 
   let t = 0;
   let sinceDecision = 99;
   let input: Input = { dx: 0, dy: 0, sprint: false };
-  const memory: Memory = { heading: null, checkAt: 0, checkX: game.player.x, checkY: game.player.y, squeezeUntil: 0 };
+  const memory: Memory = { heading: null, checkAt: 0, checkX: game.player.x, checkY: game.player.y, squeezeUntil: 0, holding: false };
   const causes: string[] = [];
   const trace = process.env.PZC_TRACE === '1';
   while (game.status === 'playing' && t < 240) {
@@ -99,7 +105,7 @@ export function playBot(number: number, seed: number, skill: BotSkill): Outcome 
     if (sinceDecision >= skill.reaction) {
       // Stuck for a few seconds? Then squeeze past, accepting a closer pass than usual.
       if (t >= memory.checkAt) {
-        if (Math.hypot(game.player.x - memory.checkX, game.player.y - memory.checkY) < 0.6) memory.squeezeUntil = t + 2.5;
+        if (!memory.holding && Math.hypot(game.player.x - memory.checkX, game.player.y - memory.checkY) < 0.6) memory.squeezeUntil = t + 2.5;
         memory.checkAt = t + 2.5;
         memory.checkX = game.player.x;
         memory.checkY = game.player.y;
@@ -146,6 +152,7 @@ function decide(game: Game, path: { x: number; y: number }[], from: number, grid
   // Never look past the point being aimed at, or the train's end wall looks like a collision at the door.
   const toTarget = Math.hypot(target.x - p.x, target.y - p.y);
   const travel = (t: number): number => Math.min(speed * t, toTarget);
+  memory.holding = hold;
   const near = game.zombies.filter((z) => Math.abs(z.y - p.y) < 6 && Math.abs(z.x - p.x) < 6);
   const margin = now < memory.squeezeUntil ? skill.margin * 0.2 : skill.margin;
   const steps = [0.25, 0.5, 0.75, 1].map((f) => f * skill.horizon);
@@ -170,7 +177,7 @@ function decide(game: Game, path: { x: number; y: number }[], from: number, grid
     return cost + Math.hypot(target.x - fx, target.y - fy) * 0.6;
   };
   // At a red light it may shuffle about to dodge, but not step into the road.
-  const roadCost = (theta: number): number => (hold && Math.sin(theta) < -0.2 ? 200 : 0);
+  const roadCost = (theta: number): number => (hold && Math.sin(theta) < 0 ? 200 : 0);
   let stillCost = Infinity;
   if (hold) {
     stillCost = 0;
@@ -196,6 +203,8 @@ function decide(game: Game, path: { x: number; y: number }[], from: number, grid
   const standStill = stillCost <= bestCost;
   memory.heading = standStill ? memory.heading : best;
   best += (rand() - 0.5) * 2 * skill.jitter;
+  // Steering error must not nudge it into the road at a red light either.
+  if (hold && Math.sin(best) < 0) best = Math.atan2(-Math.sin(best), Math.cos(best));
   const remaining = Math.max(0, p.y - goal.y);
   const hurry = game.timeLeft < remaining / (game.persona.speed * 0.85);
   return {

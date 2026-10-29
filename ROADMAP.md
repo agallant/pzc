@@ -70,9 +70,9 @@ two modes and let the player pick:
   and a regression test that keeps the shape of the difficulty curve. The slow full measurement is opt-in:
   `PZC_BALANCE=1 npx vitest run tests/balance.test.ts --silent=false`.
 - What the bot says (16 seeds a level, careful skill): it wins about 70 to 80% of levels 1 and 2, about
-  25 to 45% around levels 5 to 12, and under 40% from level 15 on, so the curve does slope. The bot is
-  weaker than a person (it cannot read a zombie's tell or time a sprint), so these are floors, not targets.
-  Real playtesting is still needed to decide how steep the curve should be.
+  25 to 45% around levels 5 to 12, and under 40% from level 15 on, so the curve does slope. The bot reads exact zombie and
+  signal state and has not been compared with a person, so these rates say nothing yet about how
+  often people win. Real playtesting is needed to decide how steep the curve should be.
 - Still to do: text scaling, performance profiling on low-end Android, Lighthouse tuning, tablet layouts,
   landscape polish, localisation scaffold.
 

@@ -1,7 +1,7 @@
 // Service worker template. vite.config.ts fills in the version and precache list at build time.
 // Precaches the whole app shell so the game opens with no network after the first visit.
-const VERSION = '99477a2e4342';
-const PRECACHE = ["./","assets/index-D4y85kL4.css","assets/index-DVXfyL1W.js","icons/apple-touch-icon.png","icons/icon-192.png","icons/icon-512.png","icons/icon-maskable-512.png","manifest.webmanifest"];
+const VERSION = '985a820ee967';
+const PRECACHE = ["./","assets/index-AWZg7qhC.css","assets/index-CLf6Bfiq.js","icons/apple-touch-icon.png","icons/icon-192.png","icons/icon-512.png","icons/icon-maskable-512.png","manifest.webmanifest"];
 // Cache Storage is shared by every registration on this origin (the live site and each PR preview),
 // so each scope gets its own prefix and only ever cleans up after itself.
 const PREFIX = `pzc:${new URL(self.registration.scope).pathname}:`;

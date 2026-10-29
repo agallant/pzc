@@ -8,6 +8,8 @@ export interface Settings {
   leftHanded: boolean;
   /** Bigger run button and joystick. */
   bigControls: boolean;
+  /** Scale all menu and HUD text up by a quarter. */
+  largeText: boolean;
 }
 
 /** A "lock the phone and walk" segment that is waiting for its check-in. */
@@ -87,7 +89,7 @@ function fresh(): Save {
     highScore: 0,
     stars: {},
     walk: null,
-    settings: { sound: true, haptics: true, leftHanded: false, bigControls: false },
+    settings: { sound: true, haptics: true, leftHanded: false, bigControls: false, largeText: false },
   };
 }
 
@@ -175,6 +177,7 @@ function sane(raw: unknown): Save {
       haptics: r.settings?.haptics !== false,
       leftHanded: r.settings?.leftHanded === true,
       bigControls: r.settings?.bigControls === true,
+      largeText: r.settings?.largeText === true,
     },
   };
 }

@@ -63,12 +63,18 @@ two modes and let the player pick:
 - Still to do: more city looks and signage per region, a share image, a local leaderboard, music that
   reacts to danger, zombie groans.
 
-### M5: Polish and balance (first part done)
+### M5: Polish and balance (second part started)
 - Done: a left-handed layout (run button on the left), a larger-controls mode, signals that carry a
   shape as well as a colour for colour-blind players, and a camera that sits a little closer on tall screens.
-- Still to do: bot-driven difficulty curve tests (a naive steering bot wins about half of all commutes at
-  every level, so the curve is flat), text scaling, performance profiling on low-end Android, Lighthouse
-  tuning, tablet layouts, landscape polish, localisation scaffold.
+- Done: a steering bot (`tests/bot.ts`) that follows the route, dodges zombies and waits for the green man,
+  and a regression test that keeps the shape of the difficulty curve. The slow full measurement is opt-in:
+  `PZC_BALANCE=1 npx vitest run tests/balance.test.ts --silent=false`.
+- What the bot says (16 seeds a level, careful skill): it wins about 70 to 80% of levels 1 and 2, about
+  25 to 45% around levels 5 to 12, and under 40% from level 15 on, so the curve does slope. The bot is
+  weaker than a person (it cannot read a zombie's tell or time a sprint), so these are floors, not targets.
+  Real playtesting is still needed to decide how steep the curve should be.
+- Still to do: text scaling, performance profiling on low-end Android, Lighthouse tuning, tablet layouts,
+  landscape polish, localisation scaffold.
 
 ## Decisions and open questions
 

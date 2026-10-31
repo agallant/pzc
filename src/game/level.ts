@@ -8,7 +8,7 @@ import type {
 export const WORLD_W = 14;
 const START_CLEAR = 8;
 const TRAIN_H = 4;
-const THEMES: ThemeId[] = ['sakura', 'hangang', 'jade', 'rhine'];
+export const THEMES: ThemeId[] = ['sakura', 'hangang', 'jade', 'rhine', 'fjord', 'canal'];
 
 const NAME_A = [
   'Aoba', 'Hikari', 'Sakura', 'Midori', 'Tsuki', 'Hana', 'Yuzu', 'Kawa', 'Seorae', 'Hanbit', 'Mirae', 'Dongju',
@@ -34,6 +34,8 @@ const WORDS: Record<ThemeId, Words> = {
   hangang: { platform: '승강장', track: (n) => `${n}번 승강장`, stairs: '계단', escalator: '에스컬레이터', lift: '엘리베이터', closed: '폐쇄' },
   jade: { platform: '站台', track: (n) => `${n}号站台`, stairs: '楼梯', escalator: '扶梯', lift: '电梯', closed: '关闭' },
   rhine: { platform: 'Gleis', track: (n) => `Gleis ${n}`, stairs: 'Treppe', escalator: 'Rolltreppe', lift: 'Aufzug', closed: 'Gesperrt' },
+  fjord: { platform: 'Perrong', track: (n) => `Spår ${n}`, stairs: 'Trappa', escalator: 'Rulltrappa', lift: 'Hiss', closed: 'Stängd' },
+  canal: { platform: 'Perron', track: (n) => `Spoor ${n}`, stairs: 'Trap', escalator: 'Roltrap', lift: 'Lift', closed: 'Gesloten' },
 };
 
 interface Ctx {

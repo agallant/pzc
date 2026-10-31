@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { generateLevel } from '../src/game/level';
+import { generateLevel, THEMES } from '../src/game/level';
 import { circleRectPush } from '../src/game/geometry';
 import { PERSONAS } from '../src/game/personas';
 import { findPath } from './helpers';
@@ -7,6 +7,19 @@ import { findPath } from './helpers';
 describe('generateLevel', () => {
   it('is deterministic for a seed', () => {
     expect(generateLevel(4, 1234)).toEqual(generateLevel(4, 1234));
+  });
+
+  it('uses every city look, and each one produces a playable level', () => {
+    const seen = new Set<string>();
+    for (let seed = 1; seed <= 300 && seen.size < THEMES.length; seed++) {
+      const level = generateLevel(3, seed * 104729);
+      if (!seen.has(level.theme)) {
+        seen.add(level.theme);
+        expect(findPath(level, { lift: true }), `${level.theme} seed ${seed}`).not.toBeNull();
+      }
+    }
+    expect([...seen].sort()).toEqual([...THEMES].sort());
+    expect(THEMES).toHaveLength(6);
   });
 
   it('differs between seeds', () => {

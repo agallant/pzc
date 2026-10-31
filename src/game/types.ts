@@ -74,7 +74,7 @@ export interface LiftSpec {
   working: boolean;
 }
 
-export type ThemeId = 'sakura' | 'hangang' | 'jade' | 'rhine';
+export type ThemeId = 'sakura' | 'hangang' | 'jade' | 'rhine' | 'fjord' | 'canal';
 
 export interface Level {
   persona: PersonaId;

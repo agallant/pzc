@@ -60,11 +60,11 @@ two modes and let the player pick:
 - Done: daily commute (same seed for everyone on a date, with a streak), lifetime stats, caps unlocked by
   walking, backup/restore of the save (copy, file, share), share text, red danger vignette at one heart,
   positional notification and horn sounds, and a zombie groan every few seconds from the nearest zombie within
-  six tiles (panned to where it is; covered by the sound setting). A local top-five list of finished runs (score, commutes made, date)
+  six tiles (panned to where it is; covered by the sound setting). Optional background music (a Music switch in Settings, off by default) that
+  speeds up and gets heavier as hearts are lost and the clock runs down, silent when paused. A local top-five list of finished runs (score, commutes made, date)
   on the Stats screen, recorded when a run is given up and banked.
 - Still to do: even more city looks (there are six: Tokyo, Seoul, China, Germany, Sweden, the
-  Netherlands, each with its own colours and local-language signs), a share image, music that
-  reacts to danger.
+  Netherlands, each with its own colours and local-language signs), a share image.
 
 ### M5: Polish and balance (second part started)
 - Done: a left-handed layout (run button on the left), a larger-controls mode, a larger-text setting, signals that carry a

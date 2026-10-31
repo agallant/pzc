@@ -11,6 +11,8 @@ export interface Settings {
   bigControls: boolean;
   /** Scale all menu and HUD text up by a quarter. */
   largeText: boolean;
+  /** Background music that gets tenser as a commute goes wrong. Off by default: people play on trains. */
+  music: boolean;
 }
 
 /** A "lock the phone and walk" segment that is waiting for its check-in. */
@@ -93,7 +95,7 @@ function fresh(): Save {
     runs: [],
     stars: {},
     walk: null,
-    settings: { sound: true, haptics: true, leftHanded: false, bigControls: false, largeText: false },
+    settings: { sound: true, haptics: true, leftHanded: false, bigControls: false, largeText: false, music: false },
   };
 }
 
@@ -199,6 +201,7 @@ function sane(raw: unknown): Save {
       leftHanded: r.settings?.leftHanded === true,
       bigControls: r.settings?.bigControls === true,
       largeText: r.settings?.largeText === true,
+      music: r.settings?.music === true,
     },
   };
 }

@@ -77,7 +77,11 @@ two modes and let the player pick:
   so the curve does slope, with noise from only 16 seeds a level. The bot reads exact zombie and
   signal state and has not been compared with a person, so these rates say nothing yet about how
   often people win. Real playtesting is needed to decide how steep the curve should be.
-- Still to do: performance profiling on a real low-end Android phone, Lighthouse tuning, localisation scaffold.
+- Still to do: performance profiling on a real low-end Android phone, a localisation scaffold, a share image.
+  Lighthouse, run locally on the production build with mobile emulation: performance 92, accessibility 100,
+  best practices 100, SEO 91, 34 KiB transferred. The weakest number is total blocking time (about 360 ms
+  under CPU throttling); the one SEO miss is `robots.txt`, which only the local preview answers with the app
+  page. No tuning needed for now.
   First pass done without a device: some per-frame allocations in the renderer removed (one shared phone-glow
   gradient per flash step, one cached danger vignette, in-place cleanup of particles and floating text).
   In headless Chromium, drawing 40 zombie glows went from about 0.9 ms to 0.2 ms a frame; that is software
@@ -85,6 +89,29 @@ two modes and let the player pick:
   Checked in a headless browser at 1024x768, 768x1024 and 667x375: menus and the game fit, and Settings
   now uses two columns on short landscape screens. Still to check on real tablets and phones. Bot follow-up: its red-light heading reflection is not scored
   against zombies and walls (`tests/bot.ts`), which can slightly skew the measurement.
+
+## Real-device checklist
+
+Everything so far was checked in a headless browser or by a bot. These are the things only a real phone or
+tablet can settle, roughly in order of how much they could change the game:
+
+1. **Fun and difficulty.** Play commutes 1 to 10 a few times. Is level 1 easy and winnable, and does it get
+   hard at a pace that makes you want one more go? The bot's win rates (above) are a rough guide only.
+2. **Walk to continue, pocket mode.** Lose all your hearts, choose "Walk with the screen on", allow the motion
+   sensors (iOS asks), pocket the phone and walk for a minute. Do steps count? Do steps taken while looking at
+   or touching the phone become zombie steps? Does the screen stay awake (wake lock)?
+3. **Walk to continue, lock and check in.** Start a walk, lock the phone for a few minutes, come back and check
+   in. Is the credit sensible? Try it with and without the optional location check, and with location refused.
+4. **Touch controls.** Drag to walk, hold RUN, left-handed and larger controls. No accidental zoom, text
+   selection or scrolling; nothing hidden under a notch or the home indicator; rotating mid-game behaves.
+5. **Audio.** Sound effects, zombie groans and the optional music (Settings, Music). iOS needs a first tap;
+   is the volume balance right, and is the music tense without being annoying? Check it stops when paused.
+6. **Install and offline.** Add to the home screen on iOS and Android, open it in airplane mode, and check that
+   an update reloads cleanly. Back up from Settings and restore on a second device.
+7. **Layout.** Settings, Stats and the end screens in portrait and landscape, with Larger text on, and on a tablet.
+8. **Performance and battery.** Frame rate on a low-end Android phone with many zombies, and how fast a ten
+   minute session drains the battery (music and groans add a little).
+9. **Daily commute.** Same level for two people on the same date, and the streak across midnight and time zones.
 
 ## Decisions and open questions
 

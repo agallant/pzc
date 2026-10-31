@@ -2,11 +2,12 @@ import './style.css';
 import { dailyLevelNumber, dailySeed, dayKey, recordDaily } from './game/daily';
 import { nearestWithin } from './game/groan';
 import { recordRun } from './game/leaderboard';
+import { dangerLevel } from './game/danger';
 import { generateLevel } from './game/level';
 import { isUnlocked, outfitById } from './game/outfits';
 import { computeViewport, drawGame, Fx, updateCamera, type Camera, type Viewport } from './game/render';
 import { randomSeed } from './game/rng';
-import { createGame, scoreResult, step, STEP, type Game, type GameEvent } from './game/sim';
+import { createGame, MAX_HP, scoreResult, step, STEP, type Game, type GameEvent } from './game/sim';
 import { Sfx } from './platform/audio';
 import { Controls } from './platform/input';
 import { exportSave, importSave, loadSave, resetSave, writeSave, type Save } from './platform/storage';
@@ -28,7 +29,11 @@ const appRoot = document.getElementById('app') as HTMLElement;
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 let save: Save = loadSave();
 const sfx = new Sfx();
-sfx.enabled = save.settings.sound;
+function applySoundPrefs(): void {
+  sfx.enabled = save.settings.sound;
+  sfx.musicEnabled = save.settings.music;
+}
+applySoundPrefs();
 const controls = new Controls(canvas);
 const hud = new Hud(hudRoot);
 controls.bindSprint(hud.sprint);
@@ -75,14 +80,14 @@ const screens = new Screens(
     next: () => startCommute(save.run.level),
     setSetting: (key, value) => {
       save.settings[key] = value;
-      if (key === 'sound') sfx.enabled = value;
+      applySoundPrefs();
       applyControlPrefs();
       writeSave(save);
       void sfx.unlock().then(() => sfx.play('tap'));
     },
     reset: () => {
       save = resetSave();
-      sfx.enabled = save.settings.sound;
+      applySoundPrefs();
       fx.cap = outfitById(save.outfit).cap;
       applyControlPrefs();
       toMenu();
@@ -117,7 +122,7 @@ const screens = new Screens(
       const imported = importSave(text);
       if (!imported) return false;
       save = imported;
-      sfx.enabled = save.settings.sound;
+      applySoundPrefs();
       applyControlPrefs();
       fx.cap = outfitById(save.outfit).cap;
       writeSave(save);
@@ -527,6 +532,8 @@ function frame(now: number): void {
       game.events.length = 0;
     }
   }
+  // Music only while a commute is actually being played: paused, menus and the end screens are quiet.
+  sfx.music(mode === 'playing' && game.status === 'playing' ? dangerLevel(game.player.hp, MAX_HP, game.timeLeft) : null);
   fx.update(dt);
   updateCamera(cam, game, vp, dt, snapCamera);
   snapCamera = false;

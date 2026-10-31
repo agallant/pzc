@@ -9,6 +9,21 @@ your phone in your pocket (see "Walking to continue" below and [ROADMAP.md](ROAD
 
 Plans and design notes are in [ROADMAP.md](ROADMAP.md).
 
+## What is in the game
+
+- **Commutes:** every attempt is a freshly generated, bite-sized level: street, crossing, concourse,
+  a fork with confusing signs, stairs, escalator or lift, and the platform. Difficulty rises with each
+  commute. There are six city looks (Tokyo, Seoul, China, Germany, Sweden, the Netherlands), each with
+  its own colours and local-language signs, and some stations have no sign you can trust.
+- **Daily commute:** one level that is the same for everyone on a given date, with a streak.
+- **Walk to continue:** see below. Steps you walk, including steps credited for time with the screen off,
+  also unlock caps for your character.
+- **Stats and Best runs:** lifetime stats and your five best finished runs, kept on the device.
+- **Backup:** Settings can copy, save to a file, share or restore your progress, because browsers can
+  evict storage for sites that are not on the home screen.
+- **Settings:** sound effects, vibration, music (off by default, and it gets tenser as a commute goes
+  wrong), a left-handed layout, larger controls and larger text.
+
 ## Install to the home screen
 
 - **iPhone / iPad (Safari):** Share, then **Add to Home Screen**.
@@ -28,6 +43,9 @@ npm run preview    # serve the production build
 ```
 
 Node 24 (see `.nvmrc`). Set `BASE_PATH=/pzc/` when building to mimic the GitHub Pages path.
+
+`npm test` includes a steering bot that plays generated levels to keep the difficulty curve sloping;
+the slow full measurement is opt-in: `PZC_BALANCE=1 npx vitest run tests/balance.test.ts --silent=false`.
 
 **Walking to continue.** When you run out of hearts, pick "Walk with the screen on" (pocket the phone;
 steps are counted live from the motion sensors, and looking at the phone or touching it makes them

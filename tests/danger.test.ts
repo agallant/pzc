@@ -11,6 +11,7 @@ describe('dangerLevel', () => {
     const levels = [3, 2, 1].map((hp) => dangerLevel(hp, 3, 60));
     expect(levels[0]).toBeLessThan(levels[1] as number);
     expect(levels[1]).toBeLessThan(levels[2] as number);
+    expect(dangerLevel(2, 3, 60)).toBeCloseTo(0.35);
   });
 
   it('rises as the clock runs down, and never leaves 0 to 1', () => {

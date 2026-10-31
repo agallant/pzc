@@ -16,7 +16,8 @@ Plans and design notes are in [ROADMAP.md](ROADMAP.md).
   commute. There are six city looks (Tokyo, Seoul, China, Germany, Sweden, the Netherlands), each with
   its own colours and local-language signs, and some stations have no sign you can trust.
 - **Daily commute:** one level that is the same for everyone on a given date, with a streak.
-- **Walk to continue:** see below. Your real steps also unlock caps for your character.
+- **Walk to continue:** see below. Steps you walk, including steps credited for time with the screen off,
+  also unlock caps for your character.
 - **Stats and Best runs:** lifetime stats and your five best finished runs, kept on the device.
 - **Backup:** Settings can copy, save to a file, share or restore your progress, because browsers can
   evict storage for sites that are not on the home screen.

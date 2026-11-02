@@ -76,9 +76,6 @@ else
   gh variable delete CODE_SCANNING --repo "$repo" >/dev/null 2>&1 || true
 fi
 
-gh label create manual-merge --repo "$repo" --force \
-  --color d93f0b --description "Don't auto-merge this PR" >/dev/null
-ok "label 'manual-merge' (add it before opening a PR to skip auto-merge)"
 
 # ---------------------------------------------------------------------------------------------
 step "Security features"
@@ -121,19 +118,28 @@ else
   fi
 
   pages_body='{"build_type":"legacy","source":{"branch":"gh-pages","path":"/"}}'
-  if gh api "repos/$repo/pages" --silent >/dev/null 2>&1; then
-    gh api -X PUT "repos/$repo/pages" --silent --input - <<<"$pages_body"
-    pages_ok=1
-  elif gh api -X POST "repos/$repo/pages" --silent --input - <<<"$pages_body" >/dev/null 2>&1; then
-    pages_ok=1
-  else
-    pages_ok=0
-  fi
+  pages_ok=0 pages_err=''
+  # A repo or branch created seconds ago can briefly be rejected, so retry a few times.
+  for attempt in 1 2 3 4 5; do
+    if gh api "repos/$repo/pages" --silent >/dev/null 2>&1; then
+      method=PUT
+    else
+      method=POST
+    fi
+    # No --silent: on failure the response body carries GitHub's validation details.
+    if pages_err="$(gh api -X "$method" "repos/$repo/pages" --input - <<<"$pages_body" 2>&1)"; then
+      pages_ok=1
+      break
+    fi
+    [ "$attempt" -lt 5 ] && sleep 6
+  done
   if [ "$pages_ok" = 1 ]; then
     url="$(gh api "repos/$repo/pages" --jq .html_url 2>/dev/null || true)"
     ok "Pages publishes gh-pages → ${url:-(URL appears after the first build)}"
   else
-    warn "couldn't enable Pages (private repos need a paid plan). Settings → Pages → Deploy from a branch → gh-pages."
+    warn "couldn't enable Pages: $(tr -s '\n ' ' ' <<<"${pages_err:-unknown error}")"
+    [ "$private" = true ] && warn "(Pages on private repos needs a paid plan.)"
+    warn "Enable it by hand: Settings → Pages → Deploy from a branch → gh-pages / (root)."
   fi
 fi
 
@@ -158,13 +164,29 @@ jq -r '.rules[] | select(.type == "required_status_checks")
 ok "1 approving review (CodeRabbit's), resolved threads, squash only, no bypass"
 
 # ---------------------------------------------------------------------------------------------
-step "If not done already, in the browser (GitHub doesn't allow this from the API)"
+step "Claude GitHub App"
+# Adding a repo to an app installation is allowed through the API (with the "GitHub App
+# installation repository access" permission), but looking up the installation isn't, so its ID
+# comes from CLAUDE_APP_INSTALLATION_ID: the number at the end of the Claude app's settings URL.
+claude_added=0
+if [ -n "${CLAUDE_APP_INSTALLATION_ID:-}" ]; then
+  repo_id="$(jq -r .id <<<"$info")"
+  if err="$(gh api -X PUT "user/installations/$CLAUDE_APP_INSTALLATION_ID/repositories/$repo_id" 2>&1)"; then
+    claude_added=1
+    ok "added ${repo#*/} to the Claude app; Claude sessions can now work in it"
+  else
+    warn "couldn't add ${repo#*/} to the Claude app: $(tr -s '\n ' ' ' <<<"$err")"
+  fi
+else
+  warn "CLAUDE_APP_INSTALLATION_ID isn't set, so add the repo to the Claude app by hand (below)."
+fi
+
+# ---------------------------------------------------------------------------------------------
 apps_url="https://github.com/settings/installations"
 [ "$owner_type" = Organization ] && apps_url="https://github.com/organizations/${repo%%/*}/settings/installations"
-cat <<EOF
-  1. CodeRabbit: $apps_url → CodeRabbit → Configure → Repository access → add ${repo#*/}
-     (not installed yet? https://github.com/apps/coderabbitai/installations/new)
-  2. Claude:     $apps_url → Claude → Configure → Repository access → add ${repo#*/}
-     (not installed yet? https://github.com/apps/claude/installations/new)
-  Without CodeRabbit nothing can approve, so no PR will merge: that is deliberate.
-EOF
+step "If not done already, in the browser (GitHub doesn't allow this from the API)"
+echo "  - CodeRabbit: $apps_url → CodeRabbit → Configure → Repository access → add ${repo#*/}"
+echo "    (or choose All repositories). Without CodeRabbit nothing can approve, so no PR merges."
+if [ "$claude_added" = 0 ]; then
+  echo "  - Claude: $apps_url → Claude → Configure → Repository access → add ${repo#*/}"
+fi

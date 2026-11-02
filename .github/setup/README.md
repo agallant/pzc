@@ -14,16 +14,29 @@ creates the repo from the template and runs [`setup-repo.sh`](setup-repo.sh) on 
 token you create once. Claude can't apply these settings from a cloud session itself, since
 those sessions aren't allowed to change repo settings, rulesets or Pages.
 
-### Once, in the template repo (about five minutes)
+### Once, in the template repo (about ten minutes)
 
+You need:
+
+- a Claude plan that includes Claude Code cloud sessions, with GitHub connected at
+  [claude.ai/code](https://claude.ai/code). Connecting GitHub there installs the Claude GitHub App.
+- a GitHub account that owns the template and the app repos. CodeRabbit's free tier covers
+  public repos, with roughly one review an hour.
+
+0. **Your own copy** (skip this if you own this repo): *Use this template → Create a new
+   repository*, then, in the copy, replace `agallant/claude-coderabbit-pwa-template` with your
+   copy's `owner/name` everywhere it appears (`CLAUDE.md`, this guide and the root README).
 1. **Mark it as a template**: *Settings → General → Template repository*.
 2. **Create the setup token**. This
-   [prefilled link](https://github.com/settings/personal-access-tokens/new?name=Repo+setup+%28PWA+template%29&description=Used+only+by+the+Repo+setup+workflow+in+the+PWA+template+repo,+to+create+and+configure+app+repos.&expires_in=365&administration=write&contents=write&issues=write&pages=write&actions_variables=write&repository_creation=write)
-   fills in the name, an expiry a year out and the permissions. Under *Repository access*, choose
+   [prefilled link](https://github.com/settings/personal-access-tokens/new?name=Repo+setup+%28PWA+template%29&description=Used+only+by+the+Repo+setup+workflow+in+the+PWA+template+repo,+to+create+and+configure+app+repos.&expires_in=365&administration=write&contents=write&issues=write&pages=write&actions_variables=write&repository_creation=write&installation_repositories=write)
+   fills in the name, an expiry a year out and the permissions. If GitHub rejects the expiry,
+   pick the longest it allows. Under *Repository access*, choose
    **All repositories** (the repos it will set up don't exist yet), then **Generate token** and
    copy it.
-   - The permissions, if you'd rather fill the form in by hand: Administration, Contents, Issues,
-     Pages, Variables and Repository creation, each *Read and write*.
+   - The permissions, if you'd rather fill the form in by hand (or check the link got them all):
+     Administration, Contents, Issues, Pages, Variables, Repository creation and GitHub App
+     installation repository access, each *Read and write*. The last one lets setup give the
+     Claude app access to each new repo.
 3. **Store the token**: template repo → *Settings → Environments → New environment* named
    `repo-setup`. Under *Deployment branches and tags*, choose **Selected branches and tags** and
    add `main`. Then *Add environment secret*: name `SETUP_TOKEN`, value the token.
@@ -32,33 +45,44 @@ those sessions aren't allowed to change repo settings, rulesets or Pages.
      are covered automatically. It reads code and comments on PRs, so broad access is a
      reasonable trade.
    - [Claude](https://github.com/apps/claude): keep **Only select repositories** and include the
-     template repo. You'll add each new app repo here (see below).
-5. **Optional: gate the template too.** Open an issue in the template repo titled
-   `Set up agallant/claude-coderabbit-pwa-template`. That applies the same ruleset, so changes to
-   the template (and to the workflow that holds the token) also need CodeRabbit's approval.
+     template repo. Setup adds each new app repo for you, once it knows the installation's ID:
+     open [github.com/settings/installations](https://github.com/settings/installations) →
+     **Claude** → **Configure**. The page URL ends in `/installations/<number>`. In the
+     `repo-setup` environment from step 3, *Add environment variable*: name
+     `CLAUDE_APP_INSTALLATION_ID`, value that number.
+5. **Recommended: gate the template too.** Open an issue in the template repo titled
+   `Set up <owner>/<template-repo>` (or ask Claude to). That applies the same ruleset, so changes
+   to the template, including the workflow that holds the token, also need CodeRabbit's approval.
 
 ### For each new app
 
-1. **Ask Claude** (in a session with the template repo) to start a new app, for example
-   *"Create agallant/space-dodge: a one-thumb arcade game for phones"*. Claude opens an issue in
-   the template repo titled `Set up agallant/space-dodge` with the description as its body. The
-   workflow creates the repo, applies the settings, comments the result and closes the issue.
-   - Without Claude: open that issue yourself (add a line `visibility: private` for a private
-     repo), or run *Actions → Repo setup → Run workflow*.
-   - Public is the default and the simplest choice. CodeQL, secret scanning, dependency review
-     and Pages are free only on public repos.
-2. **Add the repo to the Claude app**, the one step GitHub only allows in a browser:
-   [github.com/settings/installations](https://github.com/settings/installations) → **Claude** →
-   **Configure** → *Repository access* → add the repo → **Save**.
-3. **Start building**: open a session on the new repo at [claude.ai/code](https://claude.ai/code)
-   and describe the app. `CLAUDE.md` tells Claude how to bootstrap it.
+Start a session at [claude.ai/code](https://claude.ai/code) on **the template repo**, and ask for
+the new app by name along with what it should be. For example:
+
+> Create a new app repo <your-account>/space-dodge: a one-thumb arcade game for phones where you dodge
+> falling rocks. Then develop it: …
+
+Claude follows `CLAUDE.md`: it opens a `Set up <your-account>/space-dodge` issue, and the Repo setup
+workflow creates the repo, configures it, gives the Claude app access and closes the issue.
+Claude then attaches the new repo to the same session and builds the app there. You don't need
+to click anything or start a second chat.
+
+- Without `CLAUDE_APP_INSTALLATION_ID`, the workflow can't grant the Claude app access. Claude
+  will ask you to add the repo at
+  [github.com/settings/installations](https://github.com/settings/installations) → **Claude** →
+  **Configure**, then carry on once you have.
+- Without Claude: open the issue yourself (add a line `visibility: private` for a private repo),
+  or run *Actions → Repo setup → Run workflow*. Then start a session on the new repo.
+- Public is the default and the simplest choice. CodeQL, secret scanning, dependency review and
+  Pages are free only on public repos.
 
 Re-running setup on an existing repo is safe. Open another `Set up owner/name` issue after
 changing the ruleset or the script, and the settings are re-applied.
 
 ### What the token can do, and why it's contained
 
-The token can administer every repo you own. It's kept narrow in practice:
+The token can administer every repo you own and add repos to your GitHub App installations. It's
+kept narrow in practice:
 
 - It's stored only in the template repo's `repo-setup` environment, which only workflow runs
   from `main` can use. A workflow edited on a PR branch can't read it.
@@ -66,6 +90,9 @@ The token can administer every repo you own. It's kept narrow in practice:
   acting as you), and it only runs `setup-repo.sh`.
 - Claude never sees the token. It can only ask for the fixed setup to run.
 - Step 5 above makes changing that workflow go through a reviewed PR as well.
+- To revoke it, delete the token at
+  [github.com/settings/personal-access-tokens](https://github.com/settings/personal-access-tokens).
+  Setup then stops working until you add a new one; nothing else breaks.
 
 When the token expires, the next setup run fails with a message pointing here. Create a new one
 with the same link and replace the secret.
@@ -87,8 +114,7 @@ add it to the apps by hand.
 ## How a PR gets merged
 
 ```
-Claude pushes a branch and opens a PR
-  ├─ Auto-merge workflow ─── enables GitHub auto-merge (squash)
+Claude pushes a branch, opens a PR and turns on auto-merge (squash)
   ├─ CI ─────────────────── typecheck, lint, test, build, build-output check
   ├─ CodeQL ─────────────── code scanning of the app (JS/TS) and of the workflows
   ├─ zizmor ─────────────── security audit of the workflows
@@ -132,13 +158,21 @@ Optional, under *Settings → Secrets and variables → Actions → Variables*:
 | --- | --- | --- |
 | `BUILD_DIR` | `dist` | Folder the `build` script writes the site to |
 | `SITE_BASE_PATH` | `/<repo>/` | Path the site is served from. Set to `/` for a custom domain |
-| `AUTOMERGE` | on | `off` stops PRs from merging by themselves |
 | `CODE_SCANNING` | on | `off` skips CodeQL, Dependency review and zizmor's upload; the setup script sets it on private repos without Code Security |
+
+## Why Claude, not a workflow, turns on auto-merge
+
+GitHub doesn't start workflows for events caused by a workflow's own token. If a workflow turned
+on auto-merge, the merge would be made by github-actions[bot], and nothing would run afterwards:
+no deploy of `main` (only the hourly fallback), no removal of the PR preview, and no automatic
+deletion of the merged branch. So Claude turns on auto-merge itself, as you, right after opening
+each PR (see `CLAUDE.md`), and the merge counts as yours. For PRs you open yourself, click
+**Enable auto-merge** on the PR. Dependabot PRs get it from a daily scheduled Claude session (see "Dependabot PRs" in `CLAUDE.md`).
 
 ## Holding a PR back
 
-Open it as a draft, add the `manual-merge` label before opening it, or run
-`gh pr merge --disable-auto <number>`.
+Leave auto-merge off (or turn it off with **Disable auto-merge** on the PR), or open it as a
+draft.
 
 ## Deploys and previews
 

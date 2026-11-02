@@ -1,7 +1,8 @@
 # Dependabot version updates. Security updates (PRs for vulnerable dependencies) are a repo
 # setting, turned on by .github/setup/setup-repo.sh, and need nothing here.
 #
-# Dependabot PRs go through the same gates as any other PR and auto-merge when they pass.
+# Dependabot PRs go through the same gates as any other PR. A daily scheduled Claude session gets
+# each one reviewed and turns on auto-merge (see "Dependabot PRs" in CLAUDE.md).
 version: 2
 updates:
   # Keeps the SHA-pinned actions in .github/ current (the "# vX.Y.Z" comments are updated too).

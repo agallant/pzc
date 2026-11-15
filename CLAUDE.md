@@ -157,8 +157,9 @@ required checks and CodeRabbit's approval.
    reviewed the PR's latest commit: if it said the review limit was reached, wait the time it
    states first, and if it hasn't answered the command after ten minutes, post it again.
 7. Comment on each Dependabot PR you copied with a link to yours, and leave it open: Dependabot
-   closes it by itself once `main` has the new version. Close any that are still open after
-   your PR merges.
+   closes it by itself once `main` has every version in it. After your PR merges, close any
+   that are still open and fully copied. Leave open one you copied only part of (a grouped PR
+   with a bump you left out), with a comment naming the bumps that remain.
 8. Only message the user when something needs them, such as a breaking bump you couldn't fix or a
    gate that seems wrong.
 

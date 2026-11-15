@@ -5,7 +5,8 @@
 #   .github/scripts/coderabbit-queue.sh [owner/repo]
 #
 # Prints when CodeRabbit last reviewed, when the next review is available, and which open PRs
-# are waiting for a review of their latest commit, in turn order. Read-only; needs `gh`.
+# are waiting for a review of their latest commit, in turn order. It only sees reviews that
+# have been posted: one still running shows up as its PR waiting. Read-only; needs `gh`.
 set -euo pipefail
 
 repo="${1:-}"
@@ -19,7 +20,7 @@ window=3600
 # Every open PR (the queue), plus every PR of any state updated within the window. Together
 # they hold every review from the last hour: its PR is either still open, or was closed or
 # merged after the review, which sets updated_at inside the window.
-fields='"\(.number) \(.state) \(.draft) \(.user.login) \(.head.sha)"'
+fields='"\(.number) \(.state) \(.draft) \(.user.type) \(.head.sha)"'
 open_prs="$(gh api --paginate "repos/$repo/pulls?state=open&per_page=100" --jq ".[] | $fields")"
 cutoff="$(date -u -d "@$(($(date -u +%s) - window))" +%Y-%m-%dT%H:%M:%SZ)"
 recent_prs=""
@@ -39,7 +40,7 @@ prs="$(printf '%s\n%s\n' "$open_prs" "$recent_prs" | sed '/^$/d' | sort -u)"
 last=""
 last_pr=""
 waiting=()
-while read -r number state draft author sha; do
+while read -r number state draft author_type sha; do
   [ -n "$number" ] || continue
   # CodeRabbit's replies in review threads are also "reviews" (commented, empty body) but use
   # no allowance, so they are left out.
@@ -52,8 +53,9 @@ while read -r number state draft author sha; do
     last="$newest"
     last_pr="$number"
   fi
-  # Waiting: open, ready, a person's PR, and CodeRabbit hasn't reviewed its head commit.
-  if [ "$state" = open ] && [ "$draft" = false ] && [ "$author" != 'dependabot[bot]' ] &&
+  # Waiting: open, ready, a person's PR (CodeRabbit never reviews one a bot opened), and
+  # CodeRabbit hasn't reviewed its head commit.
+  if [ "$state" = open ] && [ "$draft" = false ] && [ "$author_type" != Bot ] &&
     ! printf '%s\n' "$reviews" | grep -q " $sha\$"; then
     waiting+=("$number")
   fi
@@ -61,11 +63,13 @@ done <<<"$prs"
 
 now="$(date -u +%s)"
 if [ -z "$last" ]; then
-  echo "No CodeRabbit review in the last hour or on an open PR. A review is available now."
+  echo "No CodeRabbit review posted in the last hour or on an open PR. A review should be" \
+    "available now, unless one is still running on a PR listed below."
 else
   next=$(($(date -u -d "$last" +%s) + window))
   if [ "$next" -le "$now" ]; then
-    echo "Last CodeRabbit review: $last (#$last_pr). A review is available now."
+    echo "Last CodeRabbit review: $last (#$last_pr). A review should be available now," \
+      "unless one is still running on a PR listed below."
   else
     echo "Last CodeRabbit review: $last (#$last_pr). Next review available at" \
       "$(date -u -d "@$next" +%H:%M) UTC, in $(((next - now + 59) / 60)) min."

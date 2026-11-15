@@ -137,8 +137,12 @@ required checks and CodeRabbit's approval.
    end, as for any PR. Don't open a second one until it has merged or been closed.
 2. List the open PRs by `dependabot[bot]`. If there are none, stop.
 3. On one new branch from `main`, make each bump yourself:
-   - **Packages**: install the target version with the package manager, so the lockfile is
-     regenerated here and not copied.
+   - **Packages**: for a dependency listed in `package.json`, install the target version with
+     the package manager, so the lockfile is regenerated here and not copied. For one that is
+     only in the lockfile (a dependency of a dependency), update it in place (`npm update
+     <name>`, or the package manager's equivalent) and don't add it to `package.json`. Check
+     that the diff adds no new direct dependency; if the lockfile entry won't move without
+     one, leave that bump out.
    - **Actions**: edit the `uses:` pin to the commit and version comment in Dependabot's diff.
 4. Run the `package.json` scripts CI runs. If a bump breaks them (usually a major version), fix
    the code in the same PR when the fix is small. Otherwise leave that bump out, say why in a

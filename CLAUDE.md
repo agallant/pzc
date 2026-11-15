@@ -71,7 +71,8 @@ Never ask the user for a token or to paste credentials; the workflow holds the o
   shares it (other Claude sessions and the daily Dependabot run included). Take turns:
   - Run `.github/scripts/coderabbit-queue.sh` before you open a PR, push to one, or comment
     `@coderabbitai review`. It prints when the next review is available and which open PRs are
-    waiting for one, in turn order: lowest number first, whatever kind of PR it is.
+    waiting for one, in turn order: lowest number first. Drafts and PRs opened by bots aren't
+    in the list, because CodeRabbit doesn't review them.
   - If the hour isn't up, or a PR ahead of yours is waiting, don't push or request a review:
     schedule your check-in for when your turn comes (the next slot, plus an hour for each PR
     ahead of yours) and carry on with other work on a branch that has no PR yet.
@@ -144,6 +145,10 @@ required checks and CodeRabbit's approval.
      `package.json`. Check that the diff adds no new direct dependency; if the lockfile entry
      won't move without one, leave that bump out.
    - **Actions**: edit the `uses:` pin to the commit and version comment in Dependabot's diff.
+     First confirm that commit is what the version tag points to in the action's own repo
+     (`git ls-remote https://github.com/<owner>/<repo> 'refs/tags/<version>*'`; for an
+     annotated tag, the commit is on the line ending `^{}`). If it isn't, leave that bump out
+     and tell the user.
 4. Run the `package.json` scripts CI runs. If a bump breaks them (usually a major version), fix
    the code in the same PR when the fix is small. Otherwise leave that bump out, say why in a
    comment on its Dependabot PR, and tell the user.

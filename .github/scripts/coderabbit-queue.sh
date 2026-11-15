@@ -6,7 +6,8 @@
 #
 # Prints when CodeRabbit last reviewed, when the next review is available, and which open PRs
 # are waiting for a review of their latest commit, in turn order. It only sees reviews that
-# have been posted, so one still running isn't counted (its PR usually shows as waiting). Read-only; needs `gh`.
+# have been posted, so one still running isn't counted (its PR usually shows as waiting).
+# Read-only; needs `gh`.
 set -euo pipefail
 
 repo="${1:-}"

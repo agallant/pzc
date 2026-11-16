@@ -1,13 +1,15 @@
 import { circleRectPush, clamp, pointInRect } from './geometry';
-import { PLAYER_RADIUS } from './level';
+import { BELT_SPEED } from './level';
+import { PERSONAS, type Persona } from './personas';
 import { createRng, type Rng } from './rng';
 import type { Level, PickupSpec, Rect, ZombieKind } from './types';
 
 export const STEP = 1 / 60;
 export const MAX_HP = 3;
 
-const WALK_SPEED = 3.4;
-const SPRINT_SPEED = 5.4;
+const SPRINT_FACTOR = 1.6;
+const LIFT_WAIT = 1.2;
+const LIFT_RIDE = 2.4;
 export const ZOMBIE_R = 0.38;
 const NEAR_GAP = 0.5;
 export const CAR_W = 3.2;
@@ -28,6 +30,9 @@ export type GameEvent =
   | { type: 'ping'; x: number; y: number }
   | { type: 'honk'; x: number; y: number }
   | { type: 'exhausted' }
+  | { type: 'liftStart' }
+  | { type: 'liftEnd' }
+  | { type: 'wrongWay' }
   | { type: 'trainLeft' }
   | { type: 'won' }
   | { type: 'dead' };
@@ -40,12 +45,18 @@ export interface Player {
   vx: number;
   vy: number;
   heading: number;
+  r: number;
   hp: number;
   stamina: number;
+  staminaMax: number;
   exhausted: boolean;
   invuln: number;
   boost: number;
   sprinting: boolean;
+  /** Seconds spent standing on the lift pad. */
+  pad: number;
+  /** Seconds into a lift ride, or null. */
+  ride: number | null;
 }
 
 export type ZombieState = 'walk' | 'ping' | 'stop' | 'wait' | 'cross' | 'stand';
@@ -93,6 +104,8 @@ export type Status = 'playing' | 'won' | 'dead';
 
 export interface Game {
   level: Level;
+  persona: Persona;
+  inWrongWay: boolean;
   rng: Rng;
   time: number;
   timeLeft: number;
@@ -126,7 +139,7 @@ export function createGame(level: Level): Game {
     speed: s.speed,
     weave: s.weave,
     turn: 0,
-    state: s.kind === 'waiter' ? 'wait' : s.kind === 'queue' ? 'stand' : 'walk',
+    state: s.kind === 'waiter' ? 'wait' : s.kind === 'queue' || s.kind === 'rider' ? 'stand' : 'walk',
     timer: s.kind === 'stopper' ? rng.range(1, 3) : 0,
     lane: s.lane,
     skin: s.skin,
@@ -139,15 +152,19 @@ export function createGame(level: Level): Game {
     carLanes.push({ crossing, y: c.road.y + c.road.h * 0.7, dir: 1, timer: 0.5 });
   });
   const { x, y } = level.spawn;
+  const persona = PERSONAS[level.persona];
   return {
     level,
+    persona,
+    inWrongWay: false,
     rng,
     time: 0,
     timeLeft: level.timeLimit,
     status: 'playing',
     player: {
-      x, y, px: x, py: y, vx: 0, vy: 0, heading: -Math.PI / 2,
-      hp: MAX_HP, stamina: 100, exhausted: false, invuln: 0, boost: 0, sprinting: false,
+      x, y, px: x, py: y, vx: 0, vy: 0, heading: -Math.PI / 2, r: persona.radius,
+      hp: MAX_HP, stamina: persona.staminaMax, staminaMax: persona.staminaMax, exhausted: false, invuln: 0, boost: 0,
+      sprinting: false, pad: 0, ride: null,
     },
     zombies,
     cars: [],
@@ -196,15 +213,58 @@ function collide(body: { x: number; y: number }, r: number, game: Game): { nx: n
   return { nx, ny };
 }
 
+function surfaceAt(game: Game, x: number, y: number): 'stairs' | 'escalator' | null {
+  for (const z of game.level.zones) {
+    if ((z.floor === 'stairs' || z.floor === 'escalator') && pointInRect(x, y, z)) return z.floor;
+  }
+  return null;
+}
+
+function stepLift(game: Game, dt: number): boolean {
+  const p = game.player;
+  const lift = game.level.lift;
+  if (!lift) return false;
+  if (p.ride !== null) {
+    p.ride += dt;
+    p.vx = 0;
+    p.vy = 0;
+    p.invuln = Math.max(p.invuln, 0.3);
+    if (p.ride >= LIFT_RIDE) {
+      p.ride = null;
+      p.pad = 0;
+      p.x = p.px = lift.to.x + lift.to.w / 2;
+      p.y = p.py = lift.to.y + lift.to.h / 2;
+      p.invuln = 0.8;
+      game.events.push({ type: 'liftEnd' });
+    }
+    return true;
+  }
+  if (lift.working && pointInRect(p.x, p.y, lift.from)) {
+    p.pad += dt;
+    if (p.pad >= LIFT_WAIT) {
+      p.ride = 0;
+      game.events.push({ type: 'liftStart' });
+    }
+  } else {
+    p.pad = 0;
+  }
+  return false;
+}
+
 function stepPlayer(game: Game, input: Input, dt: number): void {
   const p = game.player;
+  const persona = game.persona;
   p.px = p.x;
   p.py = p.y;
+  if (stepLift(game, dt)) return;
   const len = Math.hypot(input.dx, input.dy);
   const moving = len > 0.05;
-  const wantSprint = input.sprint && moving && !p.exhausted && p.stamina > 0;
+  const surface = surfaceAt(game, p.x, p.y);
+  const climbing = surface === 'stairs' && moving;
+  const wantSprint = persona.canSprint && input.sprint && moving && !p.exhausted && p.stamina > 0;
   p.sprinting = wantSprint;
-  let speed = wantSprint ? SPRINT_SPEED : WALK_SPEED;
+  let speed = persona.speed * (wantSprint ? SPRINT_FACTOR : 1);
+  if (surface === 'stairs') speed *= persona.stairsSpeed;
   if (p.boost > 0) speed *= 1.25;
   if (p.exhausted) speed *= 0.6;
   const scale = moving ? Math.min(1, len) / len : 0;
@@ -213,20 +273,24 @@ function stepPlayer(game: Game, input: Input, dt: number): void {
   p.vy += (input.dy * scale * speed - p.vy) * k;
   p.x += p.vx * dt;
   p.y += p.vy * dt;
-  collide(p, PLAYER_RADIUS, game);
+  if (surface === 'escalator') p.y -= BELT_SPEED * dt;
+  collide(p, p.r, game);
   if (moving && Math.hypot(p.vx, p.vy) > 0.4) {
     const d = Math.atan2(p.vy, p.vx) - p.heading;
     p.heading += Math.atan2(Math.sin(d), Math.cos(d)) * Math.min(1, dt * 14);
   }
-  if (wantSprint) {
-    p.stamina = Math.max(0, p.stamina - 30 * dt);
-    if (p.stamina <= 0) {
+  let drain = 0;
+  if (wantSprint) drain += 30;
+  if (climbing) drain += persona.stairsDrain;
+  if (drain > 0) {
+    p.stamina = Math.max(0, p.stamina - drain * dt);
+    if (p.stamina <= 0 && !p.exhausted) {
       p.exhausted = true;
       game.events.push({ type: 'exhausted' });
     }
   } else {
-    p.stamina = Math.min(100, p.stamina + (moving ? 16 : 26) * dt);
-    if (p.exhausted && p.stamina >= 30) p.exhausted = false;
+    p.stamina = Math.min(p.staminaMax, p.stamina + (moving ? 16 : 26) * persona.regen * dt);
+    if (p.exhausted && p.stamina >= p.staminaMax * 0.3) p.exhausted = false;
   }
   p.invuln = Math.max(0, p.invuln - dt);
   p.boost = Math.max(0, p.boost - dt);
@@ -249,6 +313,13 @@ function stepZombie(game: Game, z: Zombie, dt: number): void {
       // Standing in line, thumb scrolling. Now and then the phone buzzes.
       if (rng.next() < dt * 0.05) z.flash = 1;
       return;
+    case 'rider': {
+      // Standing on the escalator, thumbs busy. The belt carries them round and round.
+      z.y -= BELT_SPEED * dt;
+      if (z.y < z.lane.y - 0.5) z.y += z.lane.h + 1.0;
+      if (rng.next() < dt * 0.05) z.flash = 1;
+      return;
+    }
     case 'waiter': {
       const idx = crossingFor(game, z);
       const road = game.level.crossings[idx]?.road;
@@ -387,7 +458,7 @@ function awardNearMiss(game: Game, x: number, y: number): void {
 function stepCollisions(game: Game): void {
   const p = game.player;
   for (const z of game.zombies) {
-    const gap = Math.hypot(z.x - p.x, z.y - p.y) - ZOMBIE_R - PLAYER_RADIUS;
+    const gap = Math.hypot(z.x - p.x, z.y - p.y) - ZOMBIE_R - p.r;
     if (gap < 0) {
       damage(game, 'zombie', z.x, z.y);
       z.nearCooldown = 2.5;
@@ -403,14 +474,14 @@ function stepCollisions(game: Game): void {
       car.honked = true;
       game.events.push({ type: 'honk', x: car.x, y: car.y });
     }
-    if (circleRectPush({ x: p.x, y: p.y, r: PLAYER_RADIUS }, rect)) damage(game, 'car', car.x, car.y);
+    if (circleRectPush({ x: p.x, y: p.y, r: p.r }, rect)) damage(game, 'car', car.x, car.y);
   }
 }
 
 function stepPickups(game: Game): void {
   const p = game.player;
   for (const pk of game.pickups) {
-    if (pk.taken || Math.hypot(pk.x - p.x, pk.y - p.y) > PLAYER_RADIUS + 0.45) continue;
+    if (pk.taken || Math.hypot(pk.x - p.x, pk.y - p.y) > p.r + 0.45) continue;
     pk.taken = true;
     if (pk.type === 'coin') {
       game.coins += 1;
@@ -418,7 +489,7 @@ function stepPickups(game: Game): void {
       game.events.push({ type: 'coin', x: pk.x, y: pk.y });
     } else {
       p.boost = 6;
-      p.stamina = 100;
+      p.stamina = p.staminaMax;
       p.exhausted = false;
       game.events.push({ type: 'coffee', x: pk.x, y: pk.y });
     }
@@ -435,6 +506,12 @@ export function step(game: Game, input: Input, dt: number = STEP): void {
   stepPickups(game);
 
   const p = game.player;
+  const ww = game.level.wrongWay;
+  if (ww) {
+    const inside = pointInRect(p.x, p.y, ww);
+    if (inside && !game.inWrongWay) game.events.push({ type: 'wrongWay' });
+    game.inWrongWay = inside;
+  }
   if (p.y < game.bestY) {
     game.score += (game.bestY - p.y) * 2;
     game.bestY = p.y;

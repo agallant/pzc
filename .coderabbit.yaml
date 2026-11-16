@@ -23,6 +23,8 @@ reviews:
   auto_review:
     enabled: true
     drafts: false
+    # CodeRabbit skips PRs from bots (Dependabot) as "Bot user detected", and no setting turns
+    # that off. Claude requests their reviews with "@coderabbitai review" (see CLAUDE.md).
     base_branches:
       - '.*' # Review PRs into any branch, not just the default one.
 

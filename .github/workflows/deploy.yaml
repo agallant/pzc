@@ -2,9 +2,8 @@
 # PR previews live under pr-preview/ on the same branch (see preview.yaml), so this deploy must
 # leave that folder alone.
 #
-# The hourly schedule is a safety net: a merge made with the workflow token (e.g. if auto-merge
-# merges a PR the instant it is enabled) does not fire `push` workflows. The scheduled run
-# exits early when main is already deployed.
+# The hourly schedule is a safety net: a merge made with a workflow's own token doesn't fire
+# `push` workflows. The scheduled run exits early when main is already deployed.
 name: Deploy
 
 on:

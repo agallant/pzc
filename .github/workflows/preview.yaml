@@ -69,9 +69,11 @@ jobs:
   publish:
     name: Publish preview
     needs: build
-    # Runs to deploy after a build with a project, and on close to remove the preview.
+    # Runs to deploy after a build with a project, and on close to remove the preview. Skipped
+    # in the template repo, which has no app and so no gh-pages branch to remove previews from.
     if: >-
       always() &&
+      !github.event.repository.is_template &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       (github.event.action == 'closed' || needs.build.outputs.has-project == 'true')
     runs-on: ubuntu-latest

@@ -10,6 +10,8 @@
 # Or run it from the Actions tab (Run workflow).
 #
 # Needs the SETUP_TOKEN secret in the "repo-setup" environment (see .github/setup/README.md).
+# With the CLAUDE_APP_INSTALLATION_ID variable set there too, it also gives the Claude GitHub App
+# access to the new repo, so a Claude session can carry on in it with no clicks.
 # Only admins of the template repo can trigger it. It skips itself in repos created from the
 # template, since those aren't templates.
 name: Repo setup
@@ -135,6 +137,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.SETUP_TOKEN }}
           TARGET: ${{ steps.req.outputs.target }}
+          CLAUDE_APP_INSTALLATION_ID: ${{ vars.CLAUDE_APP_INSTALLATION_ID }}
         run: |
           set -o pipefail
           .github/setup/setup-repo.sh "$TARGET" 2>&1 | tee "$RUNNER_TEMP/setup.log"

@@ -142,8 +142,9 @@ required checks and CodeRabbit's approval.
      the package manager, so the lockfile is regenerated here and not copied. For one that is
      only in the lockfile (a dependency of a dependency), update it in place with
      `npm update <name>` or the package manager's equivalent, and don't add it to
-     `package.json`. Check that the diff adds no new direct dependency; if the lockfile entry
-     won't move without one, leave that bump out.
+     `package.json`. Then check the result: the lockfile entry must be at Dependabot's target
+     version (the command can pick a newer one), and the diff must add no new direct
+     dependency. If either check fails, undo that update and leave the bump out.
    - **Actions**: edit the `uses:` pin to the commit and version comment in Dependabot's diff.
      First confirm that commit is what the version tag points to in the action's own repo
      (`git ls-remote https://github.com/<owner>/<repo> 'refs/tags/<version>*'`; for an
@@ -151,7 +152,8 @@ required checks and CodeRabbit's approval.
      and tell the user.
 4. Run the `package.json` scripts CI runs. If a bump breaks them (usually a major version), fix
    the code in the same PR when the fix is small. Otherwise leave that bump out, say why in a
-   comment on its Dependabot PR, and tell the user.
+   comment on its Dependabot PR, and tell the user. If every bump was left out, there is
+   nothing to open a PR for: stop here.
 5. Run `.github/scripts/coderabbit-queue.sh`. CodeRabbit allows about one review an hour,
    shared with every other session working in the repo. If the hour isn't up, or an open PR is
    already waiting for a review, schedule a check-in for when the turn comes and stop here; the

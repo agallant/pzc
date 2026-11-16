@@ -155,9 +155,10 @@ required checks and CodeRabbit's approval.
      version), fix the code in the same PR when the fix is small.
 
    Undo any bump that fails a check and that you can't put right, and any action whose pin
-   doesn't match its tag. For each bump you leave out, say why in a comment on its Dependabot
-   PR and tell the user. If every bump was left out, there is nothing to open a PR for: stop
-   here.
+   doesn't match its tag. An undo can move the lockfile again, so repeat these checks after
+   each one, until the branch passes them with nothing left to undo. For each bump you leave
+   out, say why in a comment on its Dependabot PR and tell the user. If every bump was left
+   out, there is nothing to open a PR for: stop here.
 
 5. Run `.github/scripts/coderabbit-queue.sh`. CodeRabbit allows about one review an hour,
    shared with every other session working in the repo. If the hour isn't up, or an open PR is

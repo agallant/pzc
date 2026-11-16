@@ -88,6 +88,16 @@ Never ask the user for a token or to paste credentials; the workflow holds the o
 - Never leave a PR waiting unattended. Before ending a turn with a PR still open, schedule a
   check-in for yourself (for after the rate limit resets, or in about 20 minutes) to pick it
   back up.
+- **Label what needs the owner.** When a PR can't move without the repo owner (a repo setting,
+  a gate that seems wrong, a decision such as a breaking bump), add the `needs human` label and
+  comment on the PR with exactly what they need to do. If the question is whether the PR should
+  merge at all, also turn auto-merge off
+  (`gh api -X DELETE repos/<owner>/<repo>/pulls/<number>/ccr/auto_merge`) and turn it back on
+  only if they decide it should merge; if they decide it shouldn't, close it. If it only waits
+  on a setting, leave auto-merge on so it merges when that's fixed. Remove the label once
+  that's done. Any open PR without the label is in a Claude session's hands. If the repo has
+  no such label yet, create it:
+  `gh api -X POST repos/<owner>/<repo>/labels -f name="needs human" -f color=d73a4a`.
 - **Dependabot PRs** never merge themselves. A daily run carries their bumps into a PR of its
   own; see "Dependabot PRs" below.
 - After opening a PR, follow it to the end: wait for the checks and CodeRabbit's review, fix
@@ -157,8 +167,12 @@ required checks and CodeRabbit's approval.
    Undo any bump that fails a check and that you can't put right, and any action whose pin
    doesn't match its tag. An undo can move the lockfile again, so repeat these checks after
    each one, until the branch passes them with nothing left to undo. For each bump you leave
-   out, say why in a comment on its Dependabot PR and tell the user. If every bump was left
-   out, there is nothing to open a PR for: stop here.
+   out, say why in a comment on its Dependabot PR, add the `needs human` label to it, and tell
+   the user. Skip that for a package you already reported on that PR for the same version and
+   the same reason (the owner may have removed the label to put it off), unless its comments
+   show the owner has since fixed that cause and it came back. If the branch has no change
+   against `main`, because every bump was left out or is already there, there is nothing to
+   open a PR for: stop here.
 
 5. Run `.github/scripts/coderabbit-queue.sh`. CodeRabbit allows about one review an hour,
    shared with every other session working in the repo. If the hour isn't up, or an open PR is
@@ -178,7 +192,7 @@ required checks and CodeRabbit's approval.
    that are still open and fully copied. Leave open one you copied only part of (a grouped PR
    with a bump you left out), with a comment naming the bumps that remain.
 8. Only message the user when something needs them, such as a breaking bump you couldn't fix or a
-   gate that seems wrong.
+   gate that seems wrong, and label the PR it concerns `needs human`.
 
 ## CI contract
 

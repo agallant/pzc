@@ -21,7 +21,7 @@ Plans and design notes are in [ROADMAP.md](ROADMAP.md).
 - **Stats and Best runs:** lifetime stats and your five best finished runs, kept on the device.
 - **Backup:** Settings can copy, save to a file, share or restore your progress, because browsers can
   evict storage for sites that are not on the home screen.
-- **Settings:** sound effects, vibration, music (off by default, and it gets tenser as a commute goes
+- **Settings:** sound effects, vibration, music (on by default, and it gets tenser as a commute goes
   wrong), a left-handed layout, larger controls and larger text.
 
 ## Install to the home screen

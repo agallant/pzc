@@ -11,7 +11,7 @@ export interface Settings {
   bigControls: boolean;
   /** Scale all menu and HUD text up by a quarter. */
   largeText: boolean;
-  /** Background music that gets tenser as a commute goes wrong. Off by default: people play on trains. */
+  /** Background music that gets tenser as a commute goes wrong. On by default; the sound switch still silences it, and it can be turned off on its own. */
   music: boolean;
 }
 
@@ -95,7 +95,7 @@ function fresh(): Save {
     runs: [],
     stars: {},
     walk: null,
-    settings: { sound: true, haptics: true, leftHanded: false, bigControls: false, largeText: false, music: false },
+    settings: { sound: true, haptics: true, leftHanded: false, bigControls: false, largeText: false, music: true },
   };
 }
 
@@ -201,7 +201,7 @@ function sane(raw: unknown): Save {
       leftHanded: r.settings?.leftHanded === true,
       bigControls: r.settings?.bigControls === true,
       largeText: r.settings?.largeText === true,
-      music: r.settings?.music === true,
+      music: r.settings?.music !== false,
     },
   };
 }

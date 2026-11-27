@@ -57,6 +57,16 @@ const SFX: Record<SfxName, Tone[]> = {
   ],
 };
 
+/** One bass note per bar of four beats: A, F, A, then E for the unresolved turn back round. */
+const BASS = [110, 87.31, 110, 82.41];
+/** The arpeggio over each bar: A minor, F major, A minor, then E major (its G sharp is what pulls it back). */
+const ARP = [
+  [440, 523.25, 659.25, 523.25],
+  [349.23, 440, 523.25, 440],
+  [440, 523.25, 659.25, 523.25],
+  [329.63, 415.3, 493.88, 415.3],
+];
+
 /** Tiny synthesized sound effects: no audio files to download or cache. */
 export class Sfx {
   enabled = true;
@@ -110,9 +120,17 @@ export class Sfx {
     const gap = 60 / (92 + 64 * tension);
     while (this.nextBeat < now + 0.3) {
       const at = this.nextBeat;
-      const root = this.beat % 8 === 6 ? 82.4 : 55;
-      this.tone(bus, 'triangle', root, at, gap * 0.9, 0.06 + 0.07 * tension);
-      if (tension > 0.35 && this.beat % 2 === 1) this.tone(bus, 'square', this.beat % 4 === 1 ? 440 : 466, at, 0.07, 0.015 + 0.03 * tension);
+      const bar = Math.floor(this.beat / 4) % 4;
+      const step = this.beat % 4;
+      // The bass is pitched high and doubled an octave up, because phone speakers can't reproduce much below 100 Hz.
+      const root = BASS[bar] ?? 110;
+      this.tone(bus, 'triangle', root, at, gap * 0.9, 0.16 + 0.1 * tension);
+      this.tone(bus, 'triangle', root * 2, at, gap * 0.7, 0.07 + 0.05 * tension);
+      // A looping arpeggio on every beat gives it a tune, and louder as things get worse.
+      this.tone(bus, 'triangle', ARP[bar]?.[step] ?? 440, at, gap * 0.8, 0.09 + 0.06 * tension);
+      // Off-beat stabs and ticks creep in as the commute goes wrong: the tritone on the stab is the unease.
+      if (tension > 0.3 && this.beat % 2 === 1) this.tone(bus, 'square', this.beat % 4 === 1 ? 440 : 466, at, 0.07, 0.03 + 0.05 * tension);
+      if (tension > 0.5) this.tone(bus, 'square', 3200, at + gap / 2, 0.025, 0.02 + 0.03 * tension);
       this.nextBeat += gap;
       this.beat += 1;
     }

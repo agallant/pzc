@@ -60,7 +60,7 @@ two modes and let the player pick:
 - Done: daily commute (same seed for everyone on a date, with a streak), lifetime stats, caps unlocked by
   walking, backup/restore of the save (copy, file, share), share text, red danger vignette at one heart,
   positional notification and horn sounds, and a zombie groan every few seconds from the nearest zombie within
-  six tiles (panned to where it is; covered by the sound setting). Optional background music (a Music switch in Settings, off by default) that
+  six tiles (panned to where it is; covered by the sound setting). Background music (a Music switch in Settings, on by default) that
   speeds up and gets heavier as hearts are lost and the clock runs down, silent when paused. A local top-five list of finished runs (score, commutes made, date)
   on the Stats screen, recorded when a run is given up and banked.
 - Still to do: even more city looks (there are six: Tokyo, Seoul, China, Germany, Sweden, the
@@ -104,7 +104,7 @@ tablet can settle, roughly in order of how much they could change the game:
    in. Is the credit sensible? Try it with and without the optional location check, and with location refused.
 4. **Touch controls.** Drag to walk, hold RUN, left-handed and larger controls. No accidental zoom, text
    selection or scrolling; nothing hidden under a notch or the home indicator; rotating mid-game behaves.
-5. **Audio.** Sound effects, zombie groans and the optional music (Settings, Music). iOS needs a first tap;
+5. **Audio.** Sound effects, zombie groans and the music (Settings, Music). iOS needs a first tap;
    is the volume balance right, and is the music tense without being annoying? Check it stops when paused.
 6. **Install and offline.** Add to the home screen on iOS and Android, open it in airplane mode, and check that
    an update reloads cleanly. Back up from Settings and restore on a second device.
